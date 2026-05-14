@@ -103,49 +103,49 @@
 </div>
 
 <!-- Summary Cards -->
-<div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="card stat-card">
+<div class="row mb-4 row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-6 g-3">
+    <div class="col mb-3">
+        <div class="card stat-card h-100">
             <h6>Total Sales</h6>
             <div class="stat-value">{{ total_transactions }}</div>
             <small class="text-muted">transactions</small>
         </div>
     </div>
     
-    <div class="col-md-3 mb-3">
-        <div class="card stat-card">
+    <div class="col mb-3">
+        <div class="card stat-card h-100">
             <h6>Total Revenue</h6>
             <div class="stat-value">₹{{ total_revenue }}</div>
             <small class="text-muted">sold</small>
         </div>
     </div>
     
-    <div class="col-md-3 mb-3">
-        <div class="card stat-card">
+    <div class="col mb-3">
+        <div class="card stat-card h-100">
             <h6>Total Cost</h6>
             <div class="stat-value">₹{{ total_cost|floatformat:2 }}</div>
             <small class="text-muted">cost</small>
         </div>
     </div>
     
-    <div class="col-md-3 mb-3">
-        <div class="card stat-card" style="border-left-color: #27ae60;">
+    <div class="col mb-3">
+        <div class="card stat-card h-100" style="border-left-color: #27ae60;">
             <h6>Gross Profit</h6>
             <div class="stat-value" style="color: #27ae60;">₹{{ total_profit|floatformat:2 }}</div>
             <small class="text-muted">before operations</small>
         </div>
     </div>
 
-    <div class="col-md-3 mb-3">
-        <div class="card stat-card" style="border-left-color: #f39c12;">
+    <div class="col mb-3">
+        <div class="card stat-card h-100" style="border-left-color: #f39c12;">
             <h6>Operation Cost</h6>
             <div class="stat-value" style="color: #f39c12;">₹{{ total_operation_cost|floatformat:2 }}</div>
             <small class="text-muted">date-wise expenses</small>
         </div>
     </div>
 
-    <div class="col-md-3 mb-3">
-        <div class="card stat-card" style="border-left-color: #16a085;">
+    <div class="col mb-3">
+        <div class="card stat-card h-100" style="border-left-color: #16a085;">
             <h6>Net Profit</h6>
             <div class="stat-value" style="color: #16a085;">₹{{ net_profit|floatformat:2 }}</div>
             <small class="text-muted">after operations</small>
