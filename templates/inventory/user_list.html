@@ -1,88 +1,69 @@
 {% extends 'inventory/base.html' %}
 
-{% block title %}System Access Registry | Indian Kulfi Registry{% endblock %}
+{% block title %}Manage Users - Kulfi{% endblock %}
 
 {% block content %}
-<div class="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
-    <div>
-        <h1 class="text-4xl font-display font-black text-dark tracking-tight">
-            System <span class="text-primary">Access</span>
-        </h1>
-        <p class="text-textSecondary mt-3 font-medium text-lg">Control authorized personnel and administrative protocol assignments.</p>
+<h1 class="page-title"><i class="fas fa-users"></i> Manage Users</h1>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <a href="{% url 'add_user' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Add New User
+        </a>
     </div>
-    
-    <a href="{% url 'add_user' %}" class="btn-primary px-10 shadow-primary/20">
-        <i class="fas fa-user-plus mr-3"></i> Register New Identity
-    </a>
 </div>
 
-<!-- Personnel Matrix (Card Grid) -->
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
-    {% for user in users %}
-    <div class="card-premium p-8 flex flex-col group hover:translate-y-[-4px]">
-        <!-- Header -->
-        <div class="flex items-start justify-between mb-8">
-            <div class="w-14 h-14 rounded-2xl bg-dark flex items-center justify-center text-white font-display font-black text-xl shadow-xl shadow-dark/10 group-hover:bg-primary transition-colors">
-                {{ user.username|slice:":1"|upper }}
-            </div>
-            {% if user.is_active %}
-            <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/10 text-secondary border border-secondary/20">
-                <div class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></div>
-                <span class="text-[9px] font-black uppercase tracking-widest">Authorized</span>
-            </div>
-            {% else %}
-            <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                <div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
-                <span class="text-[9px] font-black uppercase tracking-widest">Revoked</span>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Identity -->
-        <div class="mb-8">
-            <h3 class="text-xl font-display font-black text-dark leading-tight">{{ user.first_name }} {{ user.last_name }}</h3>
-            <p class="text-xs font-black text-primary uppercase tracking-widest mt-1">{{ user.username }}</p>
-            <p class="text-sm font-bold text-dark mt-4 break-all"><i class="fas fa-envelope text-primary mr-2"></i>{{ user.email|default:"No email registered" }}</p>
-        </div>
-
-        <!-- Roles -->
-        <div class="mt-auto pt-6 border-t border-border-color flex flex-wrap gap-2">
-            {% if user.is_staff %}
-            <span class="status-badge bg-primary/10 text-primary">
-                <i class="fas fa-shield-halved mr-1"></i> Root Admin
-            </span>
-            {% else %}
-            <span class="status-badge bg-background text-textSecondary border border-border-color">
-                <i class="fas fa-user mr-1"></i> Staff Agent
-            </span>
-            {% endif %}
-            
-            {% if user.is_superuser %}
-            <span class="status-badge bg-accent/10 text-accent">
-                <i class="fas fa-crown mr-1"></i> Super
-            </span>
-            {% endif %}
-        </div>
-
-        <!-- Actions -->
-        <div class="mt-6 flex items-center gap-2">
-            <a href="{% url 'edit_user' user.id %}" class="flex-1 btn-outline py-3 text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary">
-                Edit Protocol
-            </a>
-            <a href="{% url 'delete_user' user.id %}" class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all">
-                <i class="fas fa-trash-alt text-xs"></i>
-            </a>
-        </div>
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-list"></i> User List</h5>
     </div>
-    {% endfor %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Staff</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td><strong>{{ user.username }}</strong></td>
+                    <td>{{ user.get_full_name|default:'-' }}</td>
+                    <td>{{ user.email|default:'-' }}</td>
+                    <td>
+                        {% if user.is_staff %}
+                        <span class="badge bg-primary">Yes</span>
+                        {% else %}
+                        <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.is_active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-danger">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'edit_user' user.id %}" class="btn btn-sm btn-warning">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a href="{% url 'delete_user' user.id %}" class="btn btn-sm btn-danger">
+                            <i class="fas fa-trash"></i> Delete
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        
-    });
-</script>
-{% endblock %}
+
 

@@ -11,7 +11,6 @@ urlpatterns = [
     
     # Dashboard
     path('dashboard/', views.admin_only_view(views.dashboard), name='dashboard'),
-    path('dashboard/api/', views.admin_only_view(views.dashboard_api), name='dashboard_api'),
     
     # Indian Kulfi Products Management
     path('products/', views.admin_only_view(views.product_list), name='product_list'),
@@ -43,7 +42,6 @@ urlpatterns = [
     path('sales/delete-grouped/', views.delete_grouped_sale, name='delete_grouped_sale'),
     path('sales/delete-date/', views.delete_sales_for_date, name='delete_sales_for_date'),
     path('sales/history/', views.sales_history, name='sales_history'),
-    path('ledger/', views.admin_only_view(views.ledger), name='ledger'),
     path('sales/quick-entry/print/html/', views.print_daily_data_sheet_html, name='print_daily_data_sheet_html'),
     path('sales/print/html/', views.print_sales_html, name='print_sales_html'),
     path('sales/print/pdf/', views.print_sales_pdf, name='print_sales_pdf'),

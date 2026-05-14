@@ -1,204 +1,356 @@
 {% extends 'inventory/base.html' %}
 
-{% block title %}Sales Terminal | Indian Kulfi Registry{% endblock %}
+{% block title %}Daily Sales Sheet - Kulfi{% endblock %}
 
 {% block content %}
-<div class="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6" id="header-reveal">
-    <div>
-        <h1 class="text-5xl font-display font-black text-dark tracking-tighter">
-            Sales <span class="text-primary">Terminal</span>
-        </h1>
-        <p class="text-textSecondary mt-3 font-bold text-lg">High-precision transaction dispatch and real-time revenue synchronization.</p>
-    </div>
-    <div class="px-8 py-4 rounded-2xl bg-white border border-border-color flex items-center gap-5 shadow-sm">
-        <div class="flex flex-col text-right">
-            <p class="text-[9px] font-black text-textSecondary uppercase tracking-widest">Active Node</p>
-            <p class="text-sm font-black text-dark uppercase tracking-tighter">POS-TERMINAL-01</p>
+<style>
+/* Briefly highlight auto-copied sales counts for visual confirmation. */
+.quantity-input.prefilled-sales-count {
+    background-color: #fff3cd;
+    border-color: #ffca2c;
+    box-shadow: 0 0 0 0.2rem rgba(255, 202, 44, 0.2);
+    transition: background-color 1.2s ease, box-shadow 1.2s ease, border-color 1.2s ease;
+}
+
+.quantity-input.prefilled-sales-count.fade-out {
+    background-color: #ffffff;
+    border-color: #ced4da;
+    box-shadow: none;
+}
+
+/* Flag stock taken values above combined stock for quick correction. */
+.stock-taken-input.over-combined-stock {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #842029;
+}
+
+</style>
+
+<h1 class="page-title"><i class="fas fa-bolt"></i> Daily Sales Sheet</h1>
+
+<form method="POST" id="quick-sales-form">
+    {% csrf_token %}
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="sales_date" class="form-label">Sales Date</label>
+            <input type="date" id="sales_date" name="sales_date" class="form-control" value="{{ selected_sales_date|date:'Y-m-d' }}" required>
+            <small class="text-muted">Combined stock shows live current stock.</small>
         </div>
-        <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-            <i class="fas fa-bolt text-lg"></i>
-        </div>
-    </div>
-</div>
-
-<div class="grid grid-cols-1 xl:grid-cols-12 gap-10" id="main-reveal">
-    <!-- Left: Entry Control -->
-    <div class="xl:col-span-4">
-        <div class="card-premium sticky top-32 border-primary/10">
-            <div class="flex items-center justify-between mb-10">
-                <h3 class="text-xs font-black text-dark uppercase tracking-[0.4em] flex items-center gap-3">
-                    <span class="w-3 h-3 rounded-full bg-primary animate-pulse shadow-lg shadow-primary/50"></span> New Dispatch
-                </h3>
-            </div>
-
-            <form method="POST" class="space-y-8">
-                {% csrf_token %}
-                {% if edit_sale %}
-                <input type="hidden" name="sale_id" value="{{ edit_sale.id }}">
-                {% endif %}
-                
-                <div class="space-y-6">
-                    <!-- Product Select -->
-                    <div class="space-y-2 group">
-                        <label class="text-[10px] font-black text-textSecondary uppercase tracking-widest px-1 group-focus-within:text-primary transition-colors">Select Product Asset</label>
-                        <div class="relative">
-                            <i class="fas fa-cube absolute left-5 top-1/2 -translate-y-1/2 text-textSecondary group-focus-within:text-primary z-10"></i>
-                            <select name="product" id="id_product" class="input-premium pl-14" required>
-                                <option value="">Identify Node...</option>
-                                {% for product in products %}
-                                <option value="{{ product.id }}" data-price="{{ product.selling_price }}" data-stock="{{ product.stock_quantity }}" {% if edit_sale.product.id == product.id %}selected{% endif %}>
-                                    {{ product.name }} (₹{{ product.selling_price }})
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Quantity -->
-                    <div class="space-y-2 group">
-                        <label class="text-[10px] font-black text-textSecondary uppercase tracking-widest px-1 group-focus-within:text-primary transition-colors">Dispatch Quantum</label>
-                        <div class="relative">
-                            <i class="fas fa-layer-group absolute left-5 top-1/2 -translate-y-1/2 text-textSecondary group-focus-within:text-primary"></i>
-                            <input type="number" name="quantity" id="id_quantity" value="{{ edit_sale.quantity|default:1 }}" class="input-premium pl-14 font-black text-lg" required>
-                        </div>
-                    </div>
-
-                    <!-- Price -->
-                    <div class="space-y-2 group">
-                        <label class="text-[10px] font-black text-textSecondary uppercase tracking-widest px-1 group-focus-within:text-primary transition-colors">Transaction Value (₹)</label>
-                        <div class="relative">
-                            <span class="absolute left-6 top-1/2 -translate-y-1/2 text-primary font-black text-lg">₹</span>
-                            <input type="number" step="0.01" name="total_price" id="id_total_price" value="{{ edit_sale.total_price|default:'' }}" class="input-premium pl-12 font-display font-black text-2xl" placeholder="0.00" required>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="pt-6">
-                    <button type="submit" class="w-full btn-primary py-5 text-base group">
-                        <i class="fas fa-check-double mr-3 group- "></i>
-                        Commit Dispatch
-                    </button>
-                    {% if edit_sale %}
-                    <a href="{% url 'quick_sales_entry' %}" class="w-full btn-outline mt-3 py-4">Discard Changes</a>
-                    {% endif %}
-                </div>
-            </form>
+        <div class="col-md-8 d-flex align-items-end justify-content-end">
+            <a href="{% if user.is_staff %}{% url 'dashboard' %}{% else %}{% url 'quick_sales_entry' %}{% endif %}" class="btn btn-outline-secondary btn-lg me-2"
+               onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href=this.href; } return false;">
+                <i class="fas fa-arrow-left"></i> Cancel
+            </a>
+            {% if not user.is_staff %}
+            <button type="submit" name="action" value="save_stock_taken" class="btn btn-outline-primary btn-lg me-2">
+                <i class="fas fa-clipboard-check"></i> Save Stock Taken
+            </button>
+            <button type="submit" name="action" value="save_sales_count" class="btn btn-outline-success btn-lg me-2">
+                <i class="fas fa-save"></i> Save Sales Count
+            </button>
+            {% endif %}
+            <button type="submit" name="action" value="record_sales" class="btn btn-primary btn-lg">
+                <i class="fas fa-save"></i> Record Sales
+            </button>
         </div>
     </div>
 
-    <!-- Right: Dispatch Manifest -->
-    <div class="xl:col-span-8 space-y-10">
-        <!-- Live Payload Info -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="card-premium py-8 px-10 flex items-center justify-between border-primary/10 shadow-lg shadow-primary/5">
-                <div>
-                    <p class="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Payload Valuation</p>
-                    <h4 class="text-4xl font-display font-black text-primary tracking-tighter" id="total-display">₹0.00</h4>
-                </div>
-                <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                    <i class="fas fa-tags text-xl"></i>
-                </div>
-            </div>
-            <div class="card-premium py-8 px-10 flex items-center justify-between border-border-color shadow-sm">
-                <div>
-                    <p class="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-1">Remaining Node Volume</p>
-                    <h4 class="text-4xl font-display font-black text-dark tracking-tighter" id="stock-display">--</h4>
-                </div>
-                <div class="w-14 h-14 rounded-2xl bg-background border border-border-color flex items-center justify-center text-textSecondary">
-                    <i class="fas fa-warehouse text-xl"></i>
-                </div>
-            </div>
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Products List</h5>
+            {% if user.is_staff %}
+            <small class="text-muted">Enter Sales Count to deduct actual sold stock from inventory.</small>
+            {% else %}
+            <small class="text-muted">Enter Stock Taken Count for your daily record (no inventory deduction), then enter Sales Count to deduct actual sold stock. If Sales Count is left empty and you click Record Sales, saved Stock Taken counts will be treated as sold.</small>
+            {% endif %}
         </div>
-
-        <!-- Recent Dispatches Ledger -->
-        <div class="card-premium p-0 overflow-hidden shadow-2xl border-border-color">
-            <div class="px-10 py-8 border-b border-border-color bg-white flex items-center justify-between">
-                <h3 class="text-sm font-display font-black text-dark uppercase tracking-[0.3em]">Dispatch Manifest</h3>
-                <span class="px-4 py-1.5 rounded-full bg-background border border-border-color text-[9px] font-black text-textSecondary uppercase tracking-widest">Recent 10 Node Syncs</span>
+        <div class="card-body">
+            {% if not user.is_staff %}
+            <div class="alert alert-secondary py-2 mb-2">
+                <strong>Current Stock Taken for Date:</strong> <span id="summary-stock-taken">{{ total_stock_taken_for_date }}</span>
             </div>
-            
-            <div class="overflow-x-auto">
-                <table class="table-premium w-full text-left">
-                    <thead>
-                        <tr class="border-b border-border-color">
-                            <th class="pl-10 py-6 text-[10px] font-black text-dark uppercase tracking-widest">Node Identity</th>
-                            <th class="text-[10px] font-black text-dark uppercase tracking-widest text-center">Quantum</th>
-                            <th class="text-[10px] font-black text-dark uppercase tracking-widest text-right">Market Value</th>
-                            <th class="text-[10px] font-black text-dark uppercase tracking-widest text-right pr-10">Operations</th>
+            <div class="alert alert-success py-2 mb-2">
+                <strong>Total Combined Stock (Live):</strong> <span id="summary-total-combined">{{ total_combined_stock }}</span>
+            </div>
+            {% endif %}
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Product Name</th>
+                            {% if user.is_staff %}
+                            <th>Avg Unit Price</th>
+                            {% endif %}
+                            <th>Combined Stock</th>
+                            {% if not user.is_staff %}
+                            <th>Stock Taken Count</th>
+                            {% endif %}
+                            <th>Sales Count</th>
+                            {% if not user.is_staff %}
+                            <th>Balance Count</th>
+                            {% endif %}
+                            <th>Estimated Total</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-border-color/50">
-                        {% for item in sales %}
-                        <tr class="group">
-                            <td class="pl-10 py-6">
-                                <p class="text-sm font-black text-neutral-900">{{ item.product.name }}</p>
-                                <p class="text-[9px] text-neutral-400 font-bold uppercase mt-1 tracking-widest">{{ item.sale_time|time:'H:i:s' }} | SYNC_OK</p>
-                            </td>
-                            <td class="text-center">
-                                <span class="px-3 py-1 rounded-lg bg-neutral-50 border border-neutral-100 text-xs font-black text-neutral-900">
-                                    {{ item.quantity }}
-                                </span>
-                            </td>
-                            <td class="text-right">
-                                <p class="text-base font-display font-black text-primary">₹{{ item.total_price|floatformat:2 }}</p>
-                            </td>
-                            <td class="text-right pr-10">
-                                <div class="flex items-center justify-end gap-3 transition-all duration-300">
-                                    <a href="{% url 'quick_sales_entry' %}?edit={{ item.id }}" class="w-10 h-10 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-neutral-400 hover:text-primary transition-all shadow-sm">
-                                        <i class="fas fa-edit text-xs"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
+                    <tbody>
+                        {% for product in products %}
                         <tr>
-                            <td colspan="4" class="px-10 py-20 text-center opacity-30">
-                                <i class="fas fa-receipt text-4xl mb-4"></i>
-                                <p class="text-[10px] font-black uppercase tracking-widest">No dispatches recorded in current cycle</p>
+                            <td>
+                                {{ product.name }}
+                                <input type="hidden" name="product_key[]" value="{{ product.key }}">
+                                <input type="hidden" name="product_label[]" value="{{ product.name }}">
+                                {% if not user.is_staff %}
+                                <input type="hidden" class="unit-price-value" value="{{ product.avg_price }}">
+                                {% endif %}
                             </td>
+                            {% if user.is_staff %}
+                            <td>
+                                <span class="unit-price">₹{{ product.avg_price|floatformat:2 }}</span>
+                                <input type="hidden" class="unit-price-value" value="{{ product.avg_price }}">
+                            </td>
+                            {% endif %}
+                            <td>{{ product.stock }}</td>
+                            {% if not user.is_staff %}
+                            <td>
+                                <input type="number" name="stock_taken_count[]" min="0" value="{{ product.stock_taken_count }}" class="form-control stock-taken-input zero-clear-input" data-stock="{{ product.stock }}" style="max-width: 120px;">
+                            </td>
+                            {% endif %}
+                            <td>
+                                <input type="number" name="quantity[]" min="0" value="{{ product.prefill_quantity|default:0 }}" class="form-control quantity-input zero-clear-input" data-stock="{{ product.stock }}" style="max-width: 120px;">
+                            </td>
+                            {% if not user.is_staff %}
+                            <td>
+                                <span class="balance-count">0</span>
+                            </td>
+                            {% endif %}
+                            <td>
+                                <span class="total-price">₹0.00</span>
+                            </td>
+                            <input type="hidden" name="sale_date[]" class="sale-date-value" value="{{ today }}">
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+
+            <div class="mt-3">
+                <div class="row g-2">
+                    {% if not user.is_staff %}
+                    <div class="col-md-6 col-lg-2">
+                        <div class="alert alert-secondary py-2 mb-0">
+                            <strong>Total Stock Taken:</strong> <span id="summary-total-stock-taken">{{ total_stock_taken_for_date }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-2">
+                        <div class="alert alert-info py-2 mb-0">
+                            <strong>Total Items Sold:</strong> <span id="summary-total-items">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-2">
+                        <div class="alert alert-success py-2 mb-0">
+                            <strong>Total Sales Count:</strong> <span id="summary-sales-count">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <div class="alert alert-primary py-2 mb-0">
+                            <strong>Total Balance Count:</strong> <span id="summary-balance-count">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-12 col-lg-3">
+                        <div class="alert alert-warning py-2 mb-0">
+                            <strong>Total Selling Price:</strong> ₹<span id="summary-total-price">0.00</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="col-md-4">
+                        <div class="alert alert-info py-2 mb-0">
+                            <strong>Total Items Sold:</strong> <span id="summary-total-items">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="alert alert-success py-2 mb-0">
+                            <strong>Total Sales Count:</strong> <span id="summary-sales-count">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="alert alert-warning py-2 mb-0">
+                            <strong>Total Selling Price:</strong> ₹<span id="summary-total-price">0.00</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
         </div>
     </div>
-</div>
+</form>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const productSelect = document.getElementById('id_product');
-        const quantityInput = document.getElementById('id_quantity');
-        const totalInput = document.getElementById('id_total_price');
-        const totalDisplay = document.getElementById('total-display');
-        const stockDisplay = document.getElementById('stock-display');
+document.addEventListener('DOMContentLoaded', function() {
+    const isPrefillFromStockTaken = "{{ prefill_from_stock_taken|yesno:'true,false' }}" === "true";
+    const salesDateInput = document.getElementById('sales_date');
+    const selectedDate = salesDateInput.value;
 
-        function updateTotals() {
-            const selected = productSelect.options[productSelect.selectedIndex];
-            if (selected && selected.value) {
-                const price = parseFloat(selected.getAttribute('data-price')) || 0;
-                const stock = parseInt(selected.getAttribute('data-stock')) || 0;
-                const qty = parseInt(quantityInput.value) || 0;
-                
-                const total = price * qty;
-                totalInput.value = total.toFixed(2);
-                totalDisplay.textContent = '₹' + total.toFixed(2);
-                stockDisplay.textContent = stock - qty;
-                stockDisplay.className = `text-3xl font-display font-black ${(stock - qty) <= 10 ? 'text-red-500' : 'text-neutral-900'}`;
-            } else {
-                totalDisplay.textContent = '₹0.00';
-                stockDisplay.textContent = '--';
+    function shouldClearZero(value) {
+        const normalized = (value || '').trim();
+        return normalized === '0' || normalized === '0.0' || normalized === '0.00';
+    }
+
+    document.querySelectorAll('.zero-clear-input').forEach(function(input) {
+        input.addEventListener('focus', function() {
+            if (shouldClearZero(input.value)) {
+                input.value = '';
             }
+        });
+
+        input.addEventListener('blur', function() {
+            if ((input.value || '').trim() === '') {
+                input.value = '0';
+            }
+        });
+    });
+
+    // sync each row sale date input when main date changed
+    salesDateInput.addEventListener('change', function() {
+        const dateValue = this.value;
+        document.querySelectorAll('.sale-date-value').forEach(function(input) {
+            input.value = dateValue;
+        });
+
+        // Reload page with selected date so combined stock is recalculated as-of that date.
+        const url = new URL(window.location.href);
+        url.searchParams.set('sales_date', dateValue);
+        window.location.href = url.toString();
+    });
+
+    // initial setting for all row sale dates and total values
+    document.querySelectorAll('.sale-date-value').forEach(function(input) {
+        input.value = selectedDate;
+    });
+
+    document.querySelectorAll('.quantity-input').forEach(function(quantityInput) {
+        const row = quantityInput.closest('tr');
+        const unitPrice = parseFloat(row.querySelector('.unit-price-value').value || 0);
+        const totalPriceLabel = row.querySelector('.total-price');
+
+        if (isPrefillFromStockTaken && (parseInt(quantityInput.value, 10) || 0) > 0) {
+            quantityInput.classList.add('prefilled-sales-count');
+            window.setTimeout(function() {
+                quantityInput.classList.add('fade-out');
+            }, 1400);
         }
 
-        productSelect.addEventListener('change', updateTotals);
-        quantityInput.addEventListener('input', updateTotals);
-        updateTotals();
+        function updateTotal() {
+            const qty = parseFloat(quantityInput.value) || 0;
+            const stock = Math.max(0, parseFloat(quantityInput.dataset.stock || 0));
+            if (qty < 0) {
+                quantityInput.value = 0;
+                return;
+            }
+            if (qty > stock) {
+                quantityInput.value = stock;
+            }
+            const total = (unitPrice * parseFloat(quantityInput.value)).toFixed(2);
+            totalPriceLabel.textContent = '₹' + total;
+            updateSummary();
+        }
 
-        
-        
-        
+        quantityInput.addEventListener('blur', function() {
+            if (quantityInput.value === '') {
+                quantityInput.value = '0';
+            }
+            updateTotal();
+        });
+
+        quantityInput.addEventListener('input', updateTotal);
+        updateTotal();
     });
+
+    document.querySelectorAll('.stock-taken-input').forEach(function(stockTakenInput) {
+        function normalizeStockTaken() {
+            const val = parseInt(stockTakenInput.value, 10);
+            if (isNaN(val) || val < 0) {
+                stockTakenInput.value = 0;
+            }
+
+            const currentValue = parseInt(stockTakenInput.value, 10) || 0;
+            const combinedStock = Math.max(0, parseInt(stockTakenInput.dataset.stock || '0', 10) || 0);
+            if (currentValue > combinedStock) {
+                stockTakenInput.classList.add('over-combined-stock');
+            } else {
+                stockTakenInput.classList.remove('over-combined-stock');
+            }
+
+            updateSummary();
+        }
+
+        stockTakenInput.addEventListener('blur', function() {
+            if (stockTakenInput.value === '') {
+                stockTakenInput.value = '0';
+            }
+            normalizeStockTaken();
+        });
+
+        stockTakenInput.addEventListener('input', normalizeStockTaken);
+        normalizeStockTaken();
+    });
+
+    function updateSummary() {
+        let totalItems = 0;
+        let totalPrice = 0;
+        let salesCount = 0;
+        let totalStockTaken = 0;
+        let totalBalanceCount = 0;
+
+        document.querySelectorAll('tbody tr').forEach(function(row) {
+            const quantity = parseInt(row.querySelector('.quantity-input').value, 10) || 0;
+            const stockTakenInput = row.querySelector('.stock-taken-input');
+            const stockTaken = stockTakenInput ? (parseInt(stockTakenInput.value, 10) || 0) : 0;
+            const balanceCount = stockTaken - quantity;
+            const balanceLabel = row.querySelector('.balance-count');
+            if (balanceLabel) {
+                balanceLabel.textContent = balanceCount;
+                balanceLabel.classList.toggle('text-danger', balanceCount < 0);
+            }
+            const rowPrice = parseFloat(row.querySelector('.total-price').textContent.replace('₹', '')) || 0;
+
+            totalStockTaken += stockTaken;
+            totalBalanceCount += balanceCount;
+
+            if (quantity > 0) {
+                salesCount += 1;
+                totalItems += quantity;
+                totalPrice += rowPrice;
+            }
+        });
+
+        const summaryStockTaken = document.getElementById('summary-stock-taken');
+        const summaryTotalStockTaken = document.getElementById('summary-total-stock-taken');
+        if (summaryStockTaken) {
+            summaryStockTaken.textContent = totalStockTaken;
+        }
+        if (summaryTotalStockTaken) {
+            summaryTotalStockTaken.textContent = totalStockTaken;
+        }
+        const summaryBalanceCount = document.getElementById('summary-balance-count');
+        if (summaryBalanceCount) {
+            summaryBalanceCount.textContent = totalBalanceCount;
+            summaryBalanceCount.classList.toggle('text-danger', totalBalanceCount < 0);
+        }
+        document.getElementById('summary-total-items').textContent = totalItems;
+        document.getElementById('summary-sales-count').textContent = salesCount;
+        document.getElementById('summary-total-price').textContent = totalPrice.toFixed(2);
+    }
+
+    // ensure all row sale_date values are set when page loads
+    salesDateInput.value = selectedDate;
+    updateSummary();
+});
 </script>
+
 {% endblock %}
+
+
 

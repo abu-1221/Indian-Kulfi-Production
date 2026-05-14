@@ -1,122 +1,188 @@
+
 {% extends 'inventory/base.html' %}
 
-{% block title %}Daily Analysis | Indian Kulfi Registry{% endblock %}
+{% block title %}Daily Report - Kulfi{% endblock %}
 
 {% block content %}
-<div class="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
-    <div>
-        <h1 class="text-5xl font-display font-black text-dark tracking-tighter">
-            Daily <span class="text-primary">Analysis</span>
-        </h1>
-        <p class="text-textSecondary mt-3 font-bold text-lg">Granular sales performance and operational efficiency audit for {{ selected_date|date:'d M, Y' }}.</p>
+<h1 class="page-title"><i class="fas fa-calendar-day"></i> Daily Report</h1>
+
+<div class="print-header">
+    <img src="{{ STATIC_URL }}logo/logo.svg" alt="Logo" onerror="this.onerror=null;this.src='{{ STATIC_URL }}logo/logo.png';" class="print-logo">
+    <h4>Daily Report</h4>
+    <p>Date: {{ selected_date|date:'Y-m-d' }}</p>
+
+</div>
+
+<!-- Current Stock Taken for Date -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="alert alert-success text-center" role="alert" style="font-size: 1.15em;">
+            <strong>Current Stock Taken for {{ selected_date|date:'Y-m-d' }}:</strong>
+            <span style="font-weight: bold; color: #2c3e50;">{{ total_combined_stock_taken }}</span>
+        </div>
+        <div class="alert alert-info text-center" role="alert" style="font-size: 1.15em; margin-top: 10px;">
+            <strong>Total Stock as of {{ selected_date|date:'Y-m-d' }}:</strong>
+            <span style="font-weight: bold; color: #2c3e50;">{{ total_stock }}</span>
+        </div>
+    </div>
+</div>
+
+<style>
+    .print-header {
+        display: block;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 10px;
+        text-align: center;
+    }
+
+    .print-header h4 { margin: 0 0 4px; font-size: 18px; color: #572809; }
+    .print-header p { margin: 0; font-size: 12px; color: #555; }
+
+    .print-logo {
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
+        margin: 0 auto 8px;
+        display: block;
+    }
+
+    @media print {
+        body {
+            background: white;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .navbar, .sidebar, .btn-group, form, .btn {
+            display: none !important;
+        }
+
+        .print-header {
+            display: block !important;
+        }
+    }
+</style>
+
+<!-- Date Selector -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex gap-2 flex-wrap align-items-end justify-content-between">
+            <form method="GET" class="d-flex gap-2">
+                <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" class="form-control" style="max-width: 150px;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> View Report
+                </button>
+                <a href="{% url 'daily_report' %}" class="btn btn-outline-danger" title="Clear date filter">
+                    <i class="fas fa-eraser"></i> Clear
+                </a>
+            </form>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{% url 'print_daily_report_html' %}?date={{ selected_date|date:'Y-m-d' }}" target="_blank">
+                        <i class="fas fa-file-alt"></i> Print (HTML)
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'print_daily_report_pdf' %}?date={{ selected_date|date:'Y-m-d' }}">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'print_daily_report_excel' %}?date={{ selected_date|date:'Y-m-d' }}">
+                        <i class="fas fa-file-excel"></i> Download Excel
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <h6>Total Sales</h6>
+            <div class="stat-value">{{ total_transactions }}</div>
+            <small class="text-muted">transactions</small>
+        </div>
     </div>
     
-    <div class="flex flex-wrap items-center gap-6">
-        <form method="GET" class="flex items-center gap-3">
-            <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" class="input-premium px-6 py-4">
-            <button type="submit" class="btn-premium btn-primary px-8 h-full">Generate</button>
-        </form>
-        
-        <div class="flex items-center gap-3">
-            <a href="{% url 'print_daily_report_html' %}?date={{ selected_date|date:'Y-m-d' }}" target="_blank" class="w-14 h-14 rounded-2xl bg-white border border-border-color flex items-center justify-center text-dark hover:text-primary transition-all shadow-sm">
-                <i class="fas fa-print text-sm"></i>
-            </a>
-            <a href="{% url 'print_daily_report_pdf' %}?date={{ selected_date|date:'Y-m-d' }}" class="w-14 h-14 rounded-2xl bg-white border border-border-color flex items-center justify-center text-dark hover:text-primary transition-all shadow-sm">
-                <i class="fas fa-file-pdf text-sm"></i>
-            </a>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <h6>Total Revenue</h6>
+            <div class="stat-value">₹{{ total_revenue }}</div>
+            <small class="text-muted">sold</small>
         </div>
-    </div>
-</div>
-
-<!-- Stock Reconciliation Pulse -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-    <div class="card-premium p-8 bg-secondary/5 border-secondary/20 flex items-center justify-between">
-        <div>
-            <p class="text-[10px] font-black text-secondary uppercase tracking-widest mb-1">Reconciled Stock Volume</p>
-            <h4 class="text-3xl font-display font-black text-dark">{{ total_combined_stock_taken }}</h4>
-        </div>
-        <div class="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-secondary shadow-sm">
-            <i class="fas fa-check-double text-xl"></i>
-        </div>
-    </div>
-    <div class="card-premium p-8 bg-primary/5 border-primary/20 flex items-center justify-between">
-        <div>
-            <p class="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Global Registry Volume</p>
-            <h4 class="text-3xl font-display font-black text-dark">{{ total_stock }}</h4>
-        </div>
-        <div class="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-primary shadow-sm">
-            <i class="fas fa-warehouse text-xl"></i>
-        </div>
-    </div>
-</div>
-
-<!-- Performance Matrix -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-    <div class="card-premium p-8 border-l-4 border-l-primary bg-white">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Total Revenue</p>
-        <h4 class="text-3xl font-display font-black text-primary tracking-tighter">₹{{ total_revenue|default:"0" }}</h4>
-        <p class="text-[10px] font-black text-primary uppercase mt-2 tracking-widest">Gross Yield</p>
-    </div>
-    <div class="card-premium p-8 border-l-4 border-l-secondary bg-white">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Cost of Goods</p>
-        <h4 class="text-3xl font-display font-black text-secondary tracking-tighter">₹{{ total_cost|floatformat:2 }}</h4>
-        <p class="text-[10px] font-black text-secondary uppercase mt-2 tracking-widest">Asset Cost</p>
-    </div>
-    <div class="card-premium p-8 border-l-4 border-l-accent bg-white">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Operation Expenses</p>
-        <h4 class="text-3xl font-display font-black text-accent tracking-tighter">₹{{ total_operation_cost|floatformat:2 }}</h4>
-        <p class="text-[10px] font-black text-accent uppercase mt-2 tracking-widest">Fixed Flow</p>
-    </div>
-    <div class="card-premium p-8 border-l-4 border-l-secondary bg-background shadow-inner">
-        <p class="text-[10px] font-black text-secondary uppercase tracking-[0.2em] mb-1">Net Gain</p>
-        <h4 class="text-3xl font-display font-black text-secondary tracking-tighter">₹{{ net_profit|floatformat:2 }}</h4>
-        <p class="text-[10px] font-black text-secondary uppercase mt-2 tracking-widest">Operational Delta</p>
-    </div>
-</div>
-
-<!-- Transaction Ledger -->
-<div class="card-premium p-0 overflow-hidden shadow-2xl border-border-color">
-    <div class="px-10 py-8 border-b border-border-color bg-white flex items-center justify-between">
-        <h3 class="font-display font-black uppercase tracking-[0.3em] text-sm text-dark">Transaction Registry</h3>
-        <span class="px-4 py-1.5 rounded-full bg-background border border-border-color text-[9px] font-black text-textSecondary uppercase tracking-widest shadow-sm">Verified Audit</span>
     </div>
     
-    <div class="overflow-x-auto">
-        <table class="table-premium w-full text-left">
-            <thead>
-                <tr class="border-b border-border-color">
-                    <th class="pl-10 py-6 text-[10px] font-black text-dark uppercase tracking-widest">Flavor Asset</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest">Volume Sold</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest">Unit Price</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest text-right">Revenue Point</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest text-center">Net Margin</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest text-right pr-10">Recorded By</th>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <h6>Total Cost</h6>
+            <div class="stat-value">₹{{ total_cost|floatformat:2 }}</div>
+            <small class="text-muted">cost</small>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card" style="border-left-color: #27ae60;">
+            <h6>Gross Profit</h6>
+            <div class="stat-value" style="color: #27ae60;">₹{{ total_profit|floatformat:2 }}</div>
+            <small class="text-muted">before operations</small>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card" style="border-left-color: #f39c12;">
+            <h6>Operation Cost</h6>
+            <div class="stat-value" style="color: #f39c12;">₹{{ total_operation_cost|floatformat:2 }}</div>
+            <small class="text-muted">date-wise expenses</small>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card" style="border-left-color: #16a085;">
+            <h6>Net Profit</h6>
+            <div class="stat-value" style="color: #16a085;">₹{{ net_profit|floatformat:2 }}</div>
+            <small class="text-muted">after operations</small>
+        </div>
+    </div>
+</div>
+
+<!-- Sales Details Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-list"></i> Sales Details for {{ selected_date|date:'M d, Y' }}</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Total Price</th>
+                    <th>Profit</th>
+                    <th>Recorded By</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-border-color/50">
+            <tbody>
                 {% for sale in sales %}
-                <tr class="group hover:bg-background/50 transition-colors">
-                    <td class="pl-10 py-6 text-sm font-black text-dark">{{ sale.product_name }}</td>
-                    <td class="text-sm font-black text-textSecondary">{{ sale.quantity }} <span class="text-[10px] uppercase">Units</span></td>
-                    <td class="text-sm font-black text-textSecondary">₹{{ sale.unit_price|floatformat:2 }}</td>
-                    <td class="text-right text-lg font-display font-black text-primary">₹{{ sale.revenue|floatformat:2 }}</td>
-                    <td class="text-center">
-                        <span class="status-badge bg-secondary/10 text-secondary border-secondary/20">
-                            ₹{{ sale.profit|floatformat:2 }}
-                        </span>
-                    </td>
-                    <td class="text-right pr-10">
-                        <span class="text-[10px] font-black text-dark bg-white px-3 py-1.5 rounded-lg border border-border-color shadow-sm uppercase tracking-widest">
-                            {{ sale.recorded_by }}
-                        </span>
-                    </td>
+                <tr>
+                    <td><strong>{{ sale.product_name }}</strong></td>
+                    <td>{{ sale.quantity }}</td>
+                    <td>₹{{ sale.unit_price|floatformat:2 }}</td>
+                    <td>₹{{ sale.revenue|floatformat:2 }}</td>
+                    <td><span class="badge bg-success">₹{{ sale.profit|floatformat:2 }}</span></td>
+                    <td>{{ sale.recorded_by }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="px-10 py-32 text-center opacity-30">
-                        <i class="fas fa-receipt text-6xl mb-6 block"></i>
-                        <p class="text-xs font-black uppercase tracking-[0.4em] text-dark">Zero transaction nodes detected for this cycle.</p>
-                    </td>
+                    <td colspan="6" class="text-center text-muted">No sales recorded for this date</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -124,4 +190,6 @@
     </div>
 </div>
 {% endblock %}
+
+
 

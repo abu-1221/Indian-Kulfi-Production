@@ -1,195 +1,157 @@
 {% extends 'inventory/base.html' %}
 
-{% block title %}Sales Ledger | Indian Kulfi Registry{% endblock %}
+{% block title %}Sales History - Kulfi{% endblock %}
 
 {% block content %}
-<div class="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-8" id="header-reveal">
-    <div>
-        <h1 class="text-5xl font-display font-black text-dark tracking-tighter">
-            Sales <span class="text-primary">Ledger</span>
-        </h1>
-        <p class="text-textSecondary mt-3 font-bold text-lg">Record of all past transactions and revenue.</p>
-    </div>
-    
-    <div class="flex items-center gap-4">
-        <!-- Quick Stats Badge -->
-        <div class="hidden xl:flex items-center gap-6 px-8 py-4 rounded-3xl bg-white border border-border-color shadow-premium">
-            <div class="flex flex-col">
-                <span class="text-[10px] font-black text-textSecondary uppercase tracking-widest">Total Revenue</span>
-                <span class="text-2xl font-display font-black text-primary">₹{{ total_sales_value|default:"0.00"|floatformat:2 }}</span>
-            </div>
-            <div class="h-10 w-[1.5px] bg-border-color"></div>
-            <div class="flex flex-col">
-                <span class="text-[10px] font-black text-textSecondary uppercase tracking-widest">Total Sales</span>
-                <span class="text-2xl font-display font-black text-dark">{{ total_sales_count|default:"0" }}</span>
-            </div>
-        </div>
-        
-        <a href="{% url 'quick_sales_entry' %}" class="btn-primary px-8">
-            <i class="fas fa-plus-circle mr-3"></i> Add Sale
-        </a>
-    </div>
-</div>
+<h1 class="page-title"><i class="fas fa-history"></i> Sales History</h1>
 
-<!-- Ledger Matrix -->
-<div class="card-premium p-0 overflow-hidden shadow-2xl" id="matrix-reveal">
-    <div class="px-10 py-8 border-b border-border-color flex flex-col md:flex-row justify-between items-center gap-6 bg-white">
-        <div class="flex items-center gap-6">
-            <div class="flex items-center gap-3">
-                <input type="checkbox" id="master-select" class="w-5 h-5 rounded border-border-color text-primary focus:ring-primary">
-                <h3 class="font-display font-black uppercase tracking-[0.3em] text-sm text-dark">Sales List</h3>
+<!-- Date Range Filter -->
+<div class="row mb-3">
+    <div class="col-12">
+        <form method="GET" class="d-flex gap-2 flex-wrap align-items-end">
+            <div>
+                <label for="start_date" class="form-label">Start Date</label>
+                <input type="date" id="start_date" name="start_date" value="{{ start_date }}" class="form-control">
             </div>
-            <div class="h-6 w-[1.5px] bg-border-color hidden md:block"></div>
-            <div id="bulk-actions" class="hidden flex items-center gap-3">
-                <button class="btn-premium btn-primary py-2 px-5 text-xs">Delete Selected</button>
-                <button class="btn-premium btn-secondary py-2 px-5 text-xs">Print Selected</button>
+            <div>
+                <label for="end_date" class="form-label">End Date</label>
+                <input type="date" id="end_date" name="end_date" value="{{ end_date }}" class="form-control">
             </div>
-        </div>
-        
-        <form method="GET" class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <div class="flex items-center gap-2">
-                <input type="date" name="start_date" value="{{ start_date|default:'' }}" class="input-premium py-2 px-4 text-sm">
-                <span class="text-textSecondary font-bold">to</span>
-                <input type="date" name="end_date" value="{{ end_date|default:'' }}" class="input-premium py-2 px-4 text-sm">
+            <div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> Filter
+                </button>
             </div>
-            <div class="relative flex-1 md:w-64">
-                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary"></i>
-                <input type="text" name="q" value="{{ request.GET.q|default:'' }}" class="input-premium pl-12 pr-4 py-2 text-sm font-bold" placeholder="Search product name...">
+            {% if start_date or end_date %}
+            <div>
+                <a href="{% url 'sales_history' %}?clear=1" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Clear Filters
+                </a>
             </div>
-            <button type="submit" class="btn-premium btn-outline py-2 px-6 text-sm">Filter</button>
-            {% if start_date or end_date or request.GET.q %}
-            <a href="{% url 'sales_history' %}?clear=1" class="btn-premium py-2 px-4 text-sm text-textSecondary hover:text-dark">Clear</a>
             {% endif %}
         </form>
     </div>
-
-    <div class="overflow-x-auto">
-        <table class="table-premium">
-            <thead>
-                <tr>
-                    <th class="pl-10 w-10"></th>
-                    <th class="py-6 text-[10px] font-black text-dark uppercase tracking-widest">Date</th>
-                    <th class="py-6 text-[10px] font-black text-dark uppercase tracking-widest">Product Name</th>
-                    <th class="py-6 text-[10px] font-black text-dark uppercase tracking-widest text-center">Quantity</th>
-                    <th class="py-6 text-[10px] font-black text-dark uppercase tracking-widest text-right">Total Price</th>
-                    <th class="py-6 text-[10px] font-black text-dark uppercase tracking-widest text-right pr-10">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-neutral-50">
-                {% for sale in sales %}
-                <tr class="group hover:bg-background/50 transition-colors">
-                    <td class="pl-10">
-                        <input type="checkbox" name="sale_ids" value="{{ sale.id }}" class="sale-checkbox w-5 h-5 rounded border-border-color text-primary focus:ring-primary">
-                    </td>
-                    <td class="py-7">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-textSecondary group-hover:text-primary transition-colors border border-border-color">
-                                <i class="fas fa-calendar-alt text-xs"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm font-black text-dark">{{ sale.sale_date|date:'d M, Y' }}</p>
-                                <p class="text-[10px] text-textSecondary font-black uppercase tracking-widest mt-0.5">{{ sale.sale_time|time:'H:i' }} UTC</p>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <p class="text-sm font-black text-dark">{{ sale.product.name }}</p>
-                        <p class="text-[9px] text-primary font-black uppercase mt-1 tracking-widest">Node ID: {{ sale.product.sku|default:"N/A" }}</p>
-                    </td>
-                    <td class="text-center">
-                        <span class="px-5 py-2 rounded-xl bg-white border border-border-color text-xs font-black text-dark shadow-sm">
-                            {{ sale.quantity }} Units
-                        </span>
-                    </td>
-                    <td class="text-right">
-                        <p class="text-lg font-display font-black text-primary">₹{{ sale.total_price|floatformat:2 }}</p>
-                        <p class="text-[10px] text-textSecondary font-black uppercase mt-1 tracking-tighter">₹{{ sale.unit_price|default:sale.product.selling_price }} / Unit</p>
-                    </td>
-                    <td class="text-right pr-10">
-                        <div class="flex items-center justify-end gap-3">
-                            {% if user.is_staff %}
-                            <a href="{% url 'edit_sale' sale.id %}" class="w-10 h-10 rounded-xl bg-white border border-border-color flex items-center justify-center text-textSecondary hover:text-primary hover:border-primary transition-all shadow-sm" title="Edit">
-                                <i class="fas fa-edit text-xs"></i>
-                            </a>
-                            <a href="{% url 'delete_sale' sale.id %}" class="w-10 h-10 rounded-xl bg-white border border-border-color flex items-center justify-center text-textSecondary hover:text-primary transition-all shadow-sm" title="Delete">
-                                <i class="fas fa-trash text-xs"></i>
-                            </a>
-                            {% else %}
-                            <i class="fas fa-lock text-textSecondary/30"></i>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" class="px-10 py-32 text-center">
-                        <div class="flex flex-col items-center gap-6">
-                            <i class="fas fa-receipt text-6xl text-neutral-400"></i>
-                            <p class="text-sm font-black uppercase tracking-[0.4em] text-neutral-900">No Sales Found</p>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Pagination -->
-    {% if paginator.num_pages > 1 %}
-    <div class="px-10 py-8 bg-neutral-50/50 border-t border-neutral-100 flex items-center justify-center">
-        <nav class="flex items-center gap-3">
-            {% if sales.has_previous %}
-            <a href="?page={{ sales.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="w-12 h-12 rounded-2xl border border-neutral-200 bg-white flex items-center justify-center text-neutral-400 hover:text-primary transition-all">
-                <i class="fas fa-chevron-left text-xs"></i>
-            </a>
-            {% endif %}
-
-            {% for num in paginator.page_range %}
-                {% if sales.number == num %}
-                <span class="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center text-sm font-black shadow-lg shadow-primary/20">
-                    {{ num }}
-                </span>
-                {% elif num > sales.number|add:'-3' and num < sales.number|add:'3' %}
-                <a href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="w-12 h-12 rounded-2xl border border-neutral-200 bg-white flex items-center justify-center text-neutral-400 hover:text-neutral-900 transition-all text-xs font-black">
-                    {{ num }}
-                </a>
-                {% endif %}
-            {% endfor %}
-
-            {% if sales.has_next %}
-            <a href="?page={{ sales.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="w-12 h-12 rounded-2xl border border-neutral-200 bg-white flex items-center justify-center text-neutral-400 hover:text-primary transition-all">
-                <i class="fas fa-chevron-right text-xs"></i>
-            </a>
-            {% endif %}
-        </nav>
-    </div>
-    {% endif %}
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const masterSelect = document.getElementById('master-select');
-        const checkboxes = document.querySelectorAll('.sale-checkbox');
-        const bulkActions = document.getElementById('bulk-actions');
+{% if start_date or end_date %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="alert alert-success">
+            <h5 class="alert-heading"><i class="fas fa-calculator"></i> Sales Summary</h5>
+            <p class="mb-0">
+                <strong>Total Sales Value:</strong> ₹{{ total_sales_value|floatformat:2 }}
+                {% if start_date and end_date %}
+                    (from {{ start_date }} to {{ end_date }})
+                {% elif start_date %}
+                    (from {{ start_date }} onwards)
+                {% elif end_date %}
+                    (up to {{ end_date }})
+                {% endif %}
+            </p>
+            <p class="mb-0 mt-1">
+                <strong>Total Items Sold:</strong> {{ total_items_sold }} |
+                <strong>Total Transactions:</strong> {{ total_sales_count }}
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
 
-        function updateBulkActions() {
-            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-            if (checkedCount > 0) {
-                bulkActions.classList.remove('hidden');
-            } else {
-                bulkActions.classList.add('hidden');
-            }
-        }
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-list"></i> Sales History</h5>
+        <span class="badge bg-info">{{ total_items_sold }} items sold</span>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total Price</th>
+                        <th>Recorded By</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in sales %}
+                    <tr>
+                        <td>{{ sale.sale_date|date:'M d, Y' }}</td>
+                        <td>
+                            <strong>{{ sale.product_name }}</strong>
+                        </td>
+                        <td>{{ sale.quantity }}</td>
+                        <td>₹{{ sale.unit_price|floatformat:2 }}</td>
+                        <td><strong>₹{{ sale.total_price|floatformat:2 }}</strong></td>
+                        <td>{{ sale.recorded_by }}</td>
+                        <td>
+                            {% if sale.notes and sale.notes != '-' %}
+                                {{ sale.notes|truncatechars:80 }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                            <br>No sales found
+                            {% if start_date or end_date %}
+                            for the selected date range
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-        masterSelect.addEventListener('change', (e) => {
-            checkboxes.forEach(cb => cb.checked = e.target.checked);
-            updateBulkActions();
-        });
+    </div>
+</div>
 
-        checkboxes.forEach(cb => {
-            cb.addEventListener('change', updateBulkActions);
-        });
-    });
-</script>
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{% url 'quick_sales_entry' %}" class="btn btn-success w-100">
+                            <i class="fas fa-bolt"></i><br>
+                            <small>Quick Sales Entry</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'quick_sales_entry' %}" class="btn btn-primary w-100">
+                            <i class="fas fa-bolt"></i><br>
+                            <small>Quick Sales Entry</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'view_sales' %}" class="btn btn-info w-100">
+                            <i class="fas fa-calendar-day"></i><br>
+                            <small>View Sales by Date</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary w-100">
+                            <i class="fas fa-home"></i><br>
+                            <small>Dashboard</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
+
+
 

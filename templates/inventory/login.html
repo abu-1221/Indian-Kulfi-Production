@@ -1,189 +1,218 @@
-{% extends 'inventory/base.html' %}
-
-{% block title %}Authentication | Indian Kulfi Registry{% endblock %}
-
-{% block login_content %}
-<div class="min-h-screen bg-neutral-950 flex flex-col md:flex-row overflow-hidden">
-    <!-- Left: Branding Side -->
-    <div class="hidden md:flex md:w-7/12 relative bg-neutral-900 items-center justify-center p-20">
-        <!-- Abstract background elements - Solid but subtle -->
-        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full animate-pulse"></div>
-        <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary/5 rounded-full animate-pulse"
-            style="animation-delay: 2s"></div>
-
-        <div class="relative z-10 max-w-lg">
-            <div class="bg-white p-6 rounded-[2.5rem] shadow-2xl inline-block mb-12">
-                <img src="{{ STATIC_URL }}logo/logo.svg" alt="Logo"
-                    onerror="this.onerror=null;this.src='{{ STATIC_URL }}logo/logo.png';"
-                    class="w-20 h-20 object-contain">
-            </div>
-            <h1 class="text-6xl font-display font-black text-white leading-tight mb-8">
-                Master the <span class="text-primary">Art</span> of <br>Kulfi Management.
-            </h1>
-            <p class="text-xl text-neutral-400 font-medium leading-relaxed mb-12">
-                The most advanced administrative portal for high-precision inventory, sales, and fiscal intelligence.
-            </p>
-
-            <div class="grid grid-cols-2 gap-8">
-                <div class="p-8 rounded-3xl bg-white/5 border border-white/10">
-                    <h3 class="text-primary font-black text-3xl mb-1">99.9%</h3>
-                    <p class="text-[10px] uppercase font-black tracking-widest text-neutral-500">Registry Integrity</p>
-                </div>
-                <div class="p-8 rounded-3xl bg-white/5 border border-white/10">
-                    <h3 class="text-secondary font-black text-3xl mb-1">2ms</h3>
-                    <p class="text-[10px] uppercase font-black tracking-widest text-neutral-500">Node Sync Speed</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer on left side -->
-        <div class="absolute bottom-10 left-20 text-[10px] font-black text-neutral-600 uppercase tracking-[0.4em]">
-            Production Node: IND-KUL-01
-        </div>
-    </div>
-
-    <!-- Right: Authentication Form -->
-    <div class="flex-1 bg-background flex items-center justify-center p-8 sm:p-12 lg:p-20 relative">
-        <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100%]"></div>
-
-        <div class="w-full max-w-md" id="login-container">
-            <div class="md:hidden text-center mb-10">
-                <div class="bg-dark p-4 rounded-3xl shadow-xl inline-block mb-6">
-                    <img src="{{ STATIC_URL }}logo/logo.svg" alt="Logo"
-                        onerror="this.onerror=null;this.src='{{ STATIC_URL }}logo/logo.png';"
-                        class="w-12 h-12 object-contain">
-                </div>
-                <h2 class="text-3xl font-display font-black text-dark">Indian Kulfi</h2>
-            </div>
-
-            <div class="mb-10">
-                <h2 class="text-4xl font-display font-black text-dark mb-3 tracking-tight">Access Protocol</h2>
-                <p class="text-textSecondary font-medium">Please authorize your session credentials to continue.</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Kulfi Inventory - Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #572809 0%, #AE6F1D 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+        }
+        
+        .login-box {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 50px 40px;
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .login-header i {
+            font-size: 4rem;
+            color: #AE6F1D;
+            margin-bottom: 15px;
+        }
+        
+        .login-header h1 {
+            color: #572809;
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .login-header p {
+            color: #7f8c8d;
+            margin-top: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            color: #572809;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .form-control {
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            padding: 12px 15px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #AE6F1D;
+            box-shadow: 0 0 0 0.2rem rgba(174, 111, 29, 0.15);
+        }
+        
+        .form-control::placeholder {
+            color: #bdc3c7;
+        }
+        
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background-color: #AE6F1D;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .btn-login:hover {
+            background-color: #8B5A1E;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(174, 111, 29, 0.3);
+        }
+        
+        .btn-login:active {
+            transform: translateY(0);
+        }
+        
+        .alert {
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 8px;
+        }
+        
+        .alert-danger {
+            background-color: #FFF5E1;
+            color: #8B5A1E;
+            border-left: 4px solid #AE6F1D;
+        }
+        
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <img src="{{ STATIC_URL }}logo/logo.svg" alt="Logo" onerror="this.onerror=null;this.src='{{ STATIC_URL }}logo/logo.png';" style="width:64px;height:64px;margin-bottom:15px;">
+                <h1>Indian Kulfi Inventory</h1>
+                <p>Inventory Management System</p>
             </div>
 
             {% if messages %}
-            <div class="mb-8 space-y-4">
                 {% for message in messages %}
-                <div
-                    class="flex items-center gap-3 p-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary text-sm font-bold animate-shake">
-                    <i class="fas fa-exclamation-triangle"></i>
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                     {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
                 {% endfor %}
-            </div>
             {% endif %}
 
-            <form method="POST" class="space-y-6">
+            <form method="POST" action="{% url 'login' %}">
                 {% csrf_token %}
-
-                <div class="space-y-2 group">
-                    <label
-                        class="text-[10px] font-black text-textSecondary uppercase tracking-widest px-1 group-focus-within:text-primary transition-colors">Handler
-                        Username</label>
-                    <div class="relative">
-                        <i
-                            class="fas fa-user-circle absolute left-5 top-1/2 -translate-y-1/2 text-textSecondary group-focus-within:text-primary transition-colors"></i>
-                        <input type="text" name="username" class="input-premium pl-14 h-14"
-                            placeholder="Enter your identity..." required>
-                    </div>
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" 
+                           placeholder="Enter your username" required autofocus>
                 </div>
 
-                <div class="space-y-2 group">
-                    <label
-                        class="text-[10px] font-black text-textSecondary uppercase tracking-widest px-1 group-focus-within:text-primary transition-colors">Security
-                        Key</label>
-                    <div class="relative">
-                        <i
-                            class="fas fa-lock absolute left-5 top-1/2 -translate-y-1/2 text-textSecondary group-focus-within:text-primary transition-colors"></i>
-                        <input type="password" id="password" name="password" class="input-premium pl-14 pr-14 h-14"
-                            placeholder="••••••••" required>
-                        <button type="button" onclick="togglePass()"
-                            class="absolute right-5 top-1/2 -translate-y-1/2 text-textSecondary hover:text-primary transition-colors">
-                            <i class="fas fa-eye text-sm" id="toggleIcon"></i>
-                        </button>
-                    </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" class="form-control" id="password" name="password" 
+                           placeholder="Enter your password" required>
                 </div>
 
-                <div class="flex items-center justify-between py-2">
-                    <label class="flex items-center gap-3 cursor-pointer group">
-                        <input type="checkbox" name="remember"
-                            class="w-5 h-5 rounded-lg border-textSecondary/30 text-primary focus:ring-primary cursor-pointer transition-all">
-                        <span class="text-sm font-bold text-textSecondary group-hover:text-dark transition-colors">Stay
-                            Authorized</span>
-                    </label>
-                    <a href="#" class="text-sm font-bold text-primary hover:text-primary-dark transition-colors">Lost
-                        Key?</a>
-                </div>
-
-                <button type="submit" class="w-full btn-primary py-5 text-base mt-6 shadow-xl shadow-primary/20">
-                    <i class="fas fa-shield-check mr-3"></i>
-                    Authorize Session
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-sign-in-alt"></i> Login
                 </button>
             </form>
 
-            <div class="mt-12 text-center">
-                <p class="text-sm text-textSecondary font-bold">
-                    System Node: <span class="text-dark">IK-MASTER-AUTH</span>
-                </p>
+            <div class="login-footer">
+                <a href="#" id="forgot-password-link">Forgot Password?</a>
             </div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var forgotLink = document.getElementById('forgot-password-link');
+                    if (forgotLink) {
+                        forgotLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            fetch('{% url "send_forgot_password_email" %}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': '{{ csrf_token }}'
+                                },
+                                body: JSON.stringify({})
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                alert(data.message || 'Password reset request sent. The admin will contact you.');
+                            })
+                            .catch(() => {
+                                alert('Failed to send password reset request.');
+                            });
+                        });
+                    }
+                });
+            </script>
         </div>
     </div>
-</div>
 
-<style>
-    @keyframes shake {
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
 
-        0%,
-        100% {
-            transform: translateX(0);
-        }
 
-        25% {
-            transform: translateX(-5px);
-        }
-
-        75% {
-            transform: translateX(5px);
-        }
-    }
-
-    .animate-shake {
-        animation: shake 0.4s ease-in-out;
-    }
-
-    @keyframes scaleIn {
-        from {
-            opacity: 0;
-            transform: scale(0.98);
-        }
-
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
-
-    #login-container {
-        animation: scaleIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-</style>
-
-<script>
-    function togglePass() {
-        const passInput = document.getElementById('password');
-        const icon = document.getElementById('toggleIcon');
-        if (passInput.type === 'password') {
-            passInput.type = 'text';
-            icon.classList.replace('fa-eye', 'fa-eye-slash');
-        } else {
-            passInput.type = 'password';
-            icon.classList.replace('fa-eye-slash', 'fa-eye');
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        
-    });
-</script>
-{% endblock %}
 

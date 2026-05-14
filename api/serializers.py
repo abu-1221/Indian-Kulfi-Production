@@ -2,7 +2,6 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from drf_spectacular.utils import extend_schema_field
 
 from inventory.models import Inventory, OperationsExpense, Product, Sales
 
@@ -14,7 +13,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'role')
 
-    @extend_schema_field(serializers.CharField())
     def get_role(self, obj):
         return 'admin' if obj.is_staff else 'sales'
 
@@ -41,7 +39,6 @@ class ProductSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('created_at', 'updated_at', 'profit_per_unit')
 
-    @extend_schema_field(serializers.DecimalField(max_digits=10, decimal_places=2))
     def get_profit_per_unit(self, obj):
         return obj.get_profit_per_unit()
 
@@ -198,9 +195,3 @@ class OperationsExpenseSerializer(serializers.ModelSerializer):
 
         validated_data['created_by'] = request.user
         return super().create(validated_data)
-
-
-class SyncSerializer(serializers.Serializer):
-    """Placeholder serializer for Sync operations."""
-    pass
-

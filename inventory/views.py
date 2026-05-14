@@ -1,11 +1,8 @@
-import json
-from django.core.mail import send_mail
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import StockOrder, StockOrderItem
 # Save Stock Order via AJAX
-@require_POST
+@csrf_exempt
 @login_required
 def save_stock_order(request):
     if request.method == 'POST':
@@ -13,21 +10,25 @@ def save_stock_order(request):
         manufacturer = data.get('manufacturer')
         order_date = data.get('order_date')
         items = data.get('items', [])
-        with transaction.atomic():
-            order = StockOrder.objects.create(
-                manufacturer=manufacturer,
-                order_date=order_date,
-                created_by=request.user if request.user.is_authenticated else None
+        order = StockOrder.objects.create(
+            manufacturer=manufacturer,
+            order_date=order_date,
+            created_by=request.user if request.user.is_authenticated else None
+        )
+        for item in items:
+            StockOrderItem.objects.create(
+                order=order,
+                kulfi_name=item.get('name'),
+                lot=item.get('lot', 0),
+                quantity=item.get('qty', 0)
             )
-            for item in items:
-                StockOrderItem.objects.create(
-                    order=order,
-                    kulfi_name=item.get('name'),
-                    lot=item.get('lot', 0),
-                    quantity=item.get('qty', 0)
-                )
         return JsonResponse({'status': 'success'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+from django.views.decorators.http import require_POST
+from django.core.mail import send_mail
+import json
+# ==================== AUTHENTICATION ====================
+
 # Forgot Password Email Handler
 @require_POST
 def send_forgot_password_email(request):
@@ -160,7 +161,6 @@ def _get_report_logo_path():
 
 def admin_only_view(view_func):
     """Restrict view access to staff users only."""
-    @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
@@ -199,196 +199,77 @@ def logout_view(request):
 
 @login_required
 def dashboard(request):
-    """Main dashboard showing filtered sales, revenue, and intelligence metrics"""
-    period = request.GET.get('period', 'today')
+    """Main dashboard showing today's sales, revenue, and low stock alerts"""
     today = timezone.now().date()
     
-    # Define date range based on period
-    start_date = today
-    if period == 'yesterday':
-        start_date = today - timedelta(days=1)
-        end_date = start_date
-    elif period == '7days':
-        start_date = today - timedelta(days=7)
-        end_date = today
-    elif period == 'monthly':
-        start_date = today.replace(day=1)
-        end_date = today
-    elif period == 'yearly':
-        start_date = today.replace(month=1, day=1)
-        end_date = today
-    else: # Default is today
-        start_date = today
-        end_date = today
-
-    # Current period data
-    sales_qs = Sales.objects.filter(sale_date__range=[start_date, end_date])
-    total_sales_count = sales_qs.count()
-    total_revenue = sales_qs.aggregate(total=Coalesce(Sum('total_price'), 0, output_field=DecimalField()))['total']
-    total_profit = sum(sale.get_profit() for sale in sales_qs)
-    total_opex = OperationsExpense.objects.filter(operation_date__range=[start_date, end_date]).aggregate(total=Coalesce(Sum('amount'), 0, output_field=DecimalField()))['total']
-    total_net_profit = total_profit - total_opex
-    
-    # Previous period data for growth calculation (simplistic comparison with previous day)
-    prev_day = start_date - timedelta(days=1)
-    prev_sales_qs = Sales.objects.filter(sale_date=prev_day)
-    prev_revenue = prev_sales_qs.aggregate(total=Coalesce(Sum('total_price'), 0, output_field=DecimalField()))['total']
-    
-    revenue_growth = 0
-    if prev_revenue > 0:
-        revenue_growth = ((total_revenue - prev_revenue) / prev_revenue) * 100
-
-    # Total stock across active products
-    total_stock = Product.objects.filter(is_active=True).aggregate(
-        total=Coalesce(Sum('current_stock'), 0, output_field=DecimalField())
+    # Today's sales
+    today_sales = Sales.objects.filter(sale_date=today)
+    total_today_sales = today_sales.count()
+    total_today_revenue = today_sales.aggregate(
+        total=Coalesce(Sum('total_price'), 0, output_field=DecimalField())
     )['total']
-
-    # Low stock alerts (all active products below reorder level)
-    low_stock_products = Product.objects.filter(current_stock__lte=F('reorder_level'), is_active=True).order_by('current_stock')
     
-    # Chart data (based on period)
-    chart_data = []
-    delta_days = (end_date - start_date).days
-    # If the period is today or yesterday, show hourly data? Let's just show the days in range.
-    # To prevent huge loops, cap at 30 days. If same day, just show that day.
-    if delta_days == 0:
-        day_sales = Sales.objects.filter(sale_date=start_date)
-        day_revenue = day_sales.aggregate(total=Coalesce(Sum('total_price'), 0, output_field=DecimalField()))['total']
-        chart_data.append({
-            'date': start_date.strftime('%d %b'),
-            'sales': day_sales.count(),
-            'revenue': float(day_revenue)
-        })
-    else:
-        for i in range(delta_days, -1, -1):
-            date_temp = end_date - timedelta(days=i)
-            day_sales = Sales.objects.filter(sale_date=date_temp)
-            day_revenue = day_sales.aggregate(total=Coalesce(Sum('total_price'), 0, output_field=DecimalField()))['total']
-            chart_data.append({
-                'date': date_temp.strftime('%d %b'),
-                'sales': day_sales.count(),
-                'revenue': float(day_revenue)
-            })
+    # Gross profit from sales only.
+    total_today_profit = sum(sale.get_profit() for sale in today_sales)
+    total_today_operation_cost = OperationsExpense.objects.filter(operation_date=today).aggregate(
+        total=Coalesce(Sum('amount'), 0, output_field=DecimalField())
+    )['total']
+    total_today_net_profit = total_today_profit - total_today_operation_cost
     
-    # Top products (by sales count in current period)
-    top_products = Product.objects.filter(sales__sale_date__range=[start_date, end_date]).annotate(
-        sale_count=Count('sales')
-    ).order_by('-sale_count')[:5]
-    
-    # Category distribution for chart
-    # We'll use the top 5 products as 'categories' for the doughnut chart
-    category_data = []
-    top_vol_products = Product.objects.filter(is_active=True).annotate(
-        vol=Coalesce(Sum('sales__quantity'), 0)
-    ).order_by('-vol')[:5]
-    
-    for p in top_vol_products:
-        category_data.append({
-            'name': p.name,
-            'value': float(p.vol) if p.vol else 0
-        })
-
-    context = {
-        'period': period,
-        'total_stock': total_stock,
-        'total_sales_count': total_sales_count,
-        'total_revenue': total_revenue,
-        'total_profit': total_profit,
-        'total_opex': total_opex,
-        'total_net_profit': total_net_profit,
-        'revenue_growth': round(revenue_growth, 1),
-        'alert_count': low_stock_products.count(),
-        'critical_products': low_stock_products[:5],
-        'last_7_days_sales': chart_data,
-        'top_products': top_products,
-        'category_data': category_data,
-    }
-    
-    return render(request, 'inventory/dashboard.html', context)
-
-from django.http import JsonResponse
-
-@login_required
-def dashboard_api(request):
-    """API endpoint for real-time dashboard data"""
-    period = request.GET.get('period', 'today')
-    today = timezone.now().date()
-    
-    # Define date range based on period
-    start_date = today
-    if period == 'yesterday':
-        start_date = today - timedelta(days=1)
-        end_date = start_date
-    elif period == '7days':
-        start_date = today - timedelta(days=7)
-        end_date = today
-    elif period == 'monthly':
-        start_date = today.replace(day=1)
-        end_date = today
-    elif period == 'yearly':
-        start_date = today.replace(month=1, day=1)
-        end_date = today
-    else: # Default is today
-        start_date = today
-        end_date = today
-
-    # Current period data
-    sales_qs = Sales.objects.filter(sale_date__range=[start_date, end_date])
-    total_sales_count = sales_qs.count()
-    total_revenue = sales_qs.aggregate(total=Coalesce(Sum('total_price'), 0, output_field=DecimalField()))['total']
-    total_profit = sum(sale.get_profit() for sale in sales_qs)
-    total_opex = OperationsExpense.objects.filter(operation_date__range=[start_date, end_date]).aggregate(total=Coalesce(Sum('amount'), 0, output_field=DecimalField()))['total']
-    total_net_profit = total_profit - total_opex
-
-    # Total stock across active products
+    # Total stock across active products only
     total_stock = Product.objects.filter(is_active=True).aggregate(
-        total=Coalesce(Sum('current_stock'), 0, output_field=DecimalField())
+        total=Coalesce(
+            Sum(
+                Case(
+                    When(current_stock__gt=0, then='current_stock'),
+                    default=0,
+                    output_field=IntegerField(),
+                )
+            ),
+            0,
+            output_field=DecimalField(),
+        )
     )['total']
 
     # Low stock alerts
-    low_stock_products = Product.objects.filter(current_stock__lte=F('reorder_level'), is_active=True).order_by('current_stock')
-
-    # Chart data
-    chart_data = []
-    delta_days = (end_date - start_date).days
-    if delta_days == 0:
-        day_sales = Sales.objects.filter(sale_date=start_date)
-        day_revenue = day_sales.aggregate(total=Coalesce(Sum('total_price'), 0, output_field=DecimalField()))['total']
-        chart_data.append({
-            'date': start_date.strftime('%d %b'),
-            'sales': day_sales.count(),
-            'revenue': float(day_revenue)
+    low_stock_products = Product.objects.filter(
+        current_stock__lte=F('reorder_level'),
+        is_active=True
+    )
+    
+    # Weekly sales trend (last 7 days)
+    last_7_days_sales = []
+    for i in range(6, -1, -1):
+        date_temp = today - timedelta(days=i)
+        sales_count = Sales.objects.filter(sale_date=date_temp).count()
+        revenue = Sales.objects.filter(sale_date=date_temp).aggregate(
+            total=Coalesce(Sum('total_price'), 0, output_field=DecimalField())
+        )['total']
+        last_7_days_sales.append({
+            'date': date_temp.strftime('%m/%d'),
+            'sales': sales_count,
+            'revenue': float(revenue)
         })
-    else:
-        for i in range(delta_days, -1, -1):
-            date_temp = end_date - timedelta(days=i)
-            day_sales = Sales.objects.filter(sale_date=date_temp)
-            day_revenue = day_sales.aggregate(total=Coalesce(Sum('total_price'), 0, output_field=DecimalField()))['total']
-            chart_data.append({
-                'date': date_temp.strftime('%d %b'),
-                'sales': day_sales.count(),
-                'revenue': float(day_revenue)
-            })
-            
-    # Category distribution for chart
-    category_data = []
-    top_vol_products = Product.objects.filter(is_active=True).annotate(
-        vol=Coalesce(Sum('sales__quantity'), 0)
-    ).order_by('-vol')[:5]
-    for p in top_vol_products:
-        category_data.append({
-            'name': p.name,
-            'value': float(p.vol) if p.vol else 0
-        })
-
-    return JsonResponse({
-        'total_revenue': float(total_revenue),
-        'total_profit': float(total_profit),
-        'total_stock': float(total_stock),
-        'alert_count': low_stock_products.count(),
-        'chart_data': chart_data,
-        'category_data': category_data
-    })
+    
+    # Top products (by sales count)
+    top_products = Product.objects.annotate(
+        sale_count=Count('sales')
+    ).order_by('-sale_count')[:5]
+    
+    context = {
+        'total_stock': total_stock,
+        'total_today_sales': total_today_sales,
+        'total_today_revenue': total_today_revenue,
+        'total_today_profit': total_today_profit,
+        'total_today_operation_cost': total_today_operation_cost,
+        'total_today_net_profit': total_today_net_profit,
+        'low_stock_count': low_stock_products.count(),
+        'low_stock_products': low_stock_products[:5],
+        'last_7_days_sales': last_7_days_sales,
+        'top_products': top_products,
+    }
+    
+    return render(request, 'inventory/dashboard.html', context)
 
 # ==================== INDIAN KULFI PRODUCTS MODULE ====================
 
@@ -1249,19 +1130,18 @@ def quick_inventory_entry(request):
             else:
                 movement_notes = manufacturer_stamp
 
-            with transaction.atomic():
-                Inventory.objects.create(
-                    product=product,
-                    movement_type=movement_type,
-                    quantity=inventory_quantity,
-                    unit_cost=cost_price,
-                    movement_date=movement_date,
-                    reference_document=f'Quick entry {movement_date}',
-                    notes=movement_notes,
-                    created_by=request.user
-                )
-                product.current_stock = max(0, product.current_stock)
-                product.save()
+            Inventory.objects.create(
+                product=product,
+                movement_type=movement_type,
+                quantity=inventory_quantity,
+                unit_cost=cost_price,
+                movement_date=movement_date,
+                reference_document=f'Quick entry {movement_date}',
+                notes=movement_notes,
+                created_by=request.user
+            )
+            product.current_stock = max(0, product.current_stock)
+            product.save()
             recorded_items.append({
                 'name': product.name,
                 'sku': product.sku,
@@ -1622,8 +1502,7 @@ def build_sales_groups(sales_qs, include_date=False):
 
         # Keep lowest SKU in each group to support SKU-based ordering.
         current_sort_sku = grouped[group_key].get('sort_sku')
-        new_sku = sale.product.sku or "ZZZ"  # Default for null SKUs to put them at the end
-        if not current_sort_sku or new_sku < (current_sort_sku or "ZZZ"):
+        if not current_sort_sku or sale.product.sku < current_sort_sku:
             grouped[group_key]['sort_sku'] = sale.product.sku
 
     grouped_rows = []
@@ -2091,19 +1970,18 @@ def quick_sales_entry(request):
                     if allocated_quantity <= 0:
                         continue
 
-                    with transaction.atomic():
-                        Sales.objects.create(
-                            product=product,
-                            quantity=allocated_quantity,
-                            unit_price=product.selling_price,
-                            sale_date=sale_date,
-                            recorded_by=request.user,
-                            notes=notes,
-                        )
+                    Sales.objects.create(
+                        product=product,
+                        quantity=allocated_quantity,
+                        unit_price=product.selling_price,
+                        sale_date=sale_date,
+                        recorded_by=request.user,
+                        notes=notes,
+                    )
 
-                        product.current_stock -= allocated_quantity
-                        product.current_stock = max(0, product.current_stock)
-                        product.save()
+                    product.current_stock -= allocated_quantity
+                    product.current_stock = max(0, product.current_stock)
+                    product.save()
 
                     total_items_sold += allocated_quantity
                     total_selling_price += Decimal(allocated_quantity) * product.selling_price
@@ -2516,36 +2394,30 @@ def sales_history(request):
         }
         return render(request, 'inventory/sales_history.html', context)
 
-    sales_qs = Sales.objects.all().select_related('product', 'recorded_by').order_by('-sale_date', '-created_at')
+    sales_qs = Sales.objects.all().select_related('product', 'recorded_by')
 
     # Filter by date range if provided
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
-    q = request.GET.get('q')
 
     if start_date:
         sales_qs = sales_qs.filter(sale_date__gte=start_date)
     if end_date:
         sales_qs = sales_qs.filter(sale_date__lte=end_date)
-    if q:
-        sales_qs = sales_qs.filter(product__name__icontains=q)
+
+    sales = build_sales_groups(sales_qs, include_date=True)
 
     # Calculate total sales value for filtered results
     total_sales_value = sales_qs.aggregate(
         total=Coalesce(Sum('total_price'), 0, output_field=DecimalField())
     )['total']
-    total_sales_count = sales_qs.count()
+    total_sales_count = len(sales)
     total_items_sold = sales_qs.aggregate(
         total=Coalesce(Sum('quantity'), 0)
     )['total']
 
-    paginator = Paginator(sales_qs, 50)
-    page_number = request.GET.get('page')
-    sales = paginator.get_page(page_number)
-
     context = {
         'sales': sales,
-        'paginator': paginator,
         'start_date': start_date,
         'end_date': end_date,
         'total_sales_value': total_sales_value,
@@ -2554,84 +2426,6 @@ def sales_history(request):
     }
 
     return render(request, 'inventory/sales_history.html', context)
-
-@admin_only_view
-def ledger(request):
-    """
-    General Ledger view combining Sales, Expenses, and Income in a single chronological view.
-    """
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
-
-    # Base querysets
-    sales_qs = Sales.objects.all().select_related('product')
-    expenses_qs = OperationsExpense.objects.all()
-    income_qs = OperationsIncome.objects.all()
-
-    if start_date:
-        sales_qs = sales_qs.filter(sale_date__gte=start_date)
-        expenses_qs = expenses_qs.filter(operation_date__gte=start_date)
-        income_qs = income_qs.filter(income_date__gte=start_date)
-    if end_date:
-        sales_qs = sales_qs.filter(sale_date__lte=end_date)
-        expenses_qs = expenses_qs.filter(operation_date__lte=end_date)
-        income_qs = income_qs.filter(income_date__lte=end_date)
-
-    # Combine into a single list of entries
-    entries = []
-
-    for s in sales_qs:
-        entries.append({
-            'date': s.sale_date,
-            'description': f"Sales: {s.product.name} (x{s.quantity})",
-            'debit': Decimal('0.00'),
-            'credit': s.total_price,
-            'type': 'SALE'
-        })
-
-    for e in expenses_qs:
-        entries.append({
-            'date': e.operation_date,
-            'description': f"Expense: {e.details}",
-            'debit': e.amount,
-            'credit': Decimal('0.00'),
-            'type': 'EXPENSE'
-        })
-
-    for i in income_qs:
-        entries.append({
-            'date': i.income_date,
-            'description': f"Income: {i.details}",
-            'debit': Decimal('0.00'),
-            'credit': i.amount,
-            'type': 'INCOME'
-        })
-
-    # Sort entries by date
-    entries.sort(key=lambda x: x['date'], reverse=True)
-
-    # Calculate Running Balance (need to sort chronologically for this)
-    entries_for_balance = sorted(entries, key=lambda x: x['date'])
-    balance = Decimal('0.00')
-    for entry in entries_for_balance:
-        balance += (entry['credit'] - entry['debit'])
-        entry['balance'] = balance
-
-    # Re-sort for display (newest first)
-    entries.sort(key=lambda x: x['date'], reverse=True)
-
-    paginator = Paginator(entries, 50)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        'page_obj': page_obj,
-        'start_date': start_date,
-        'end_date': end_date,
-        'current_balance': balance,
-    }
-    return render(request, 'inventory/ledger.html', context)
-
 
 @login_required
 def get_product_price(request):
@@ -3430,15 +3224,12 @@ def _build_income_statement_context(start_date, end_date):
     return {
         'start_date': start_date,
         'end_date': end_date,
-        'period_label': f"{start_date.strftime('%d %b %Y')} - {end_date.strftime('%d %b %Y')}",
-        'total_revenue': sales_revenue + operating_income_total,
-        'total_expenses': cost_of_goods_sold + operating_expense_total,
-        'net_profit': net_profit_before_tax,
-        'total_sales_revenue': sales_revenue,
-        'total_other_income': operating_income_total,
-        'total_cost_price': cost_of_goods_sold,
-        'total_operational_expenses': operating_expense_total,
+        'sales_revenue': sales_revenue,
+        'cost_of_goods_sold': cost_of_goods_sold,
         'gross_profit': gross_profit,
+        'operating_income_total': operating_income_total,
+        'operating_expense_total': operating_expense_total,
+        'net_profit_before_tax': net_profit_before_tax,
         'gross_margin': gross_margin,
         'net_margin': net_margin,
         'sales_breakdown': sales_breakdown,

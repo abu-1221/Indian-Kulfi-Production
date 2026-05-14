@@ -3,46 +3,12 @@
 {% block title %}Stock Report - Kulfi{% endblock %}
 
 {% block content %}
-<!-- Header Greeting -->
-<div class="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
-    <div>
-        <h1 class="text-5xl font-display font-black text-dark tracking-tighter">
-            Stock <span class="text-primary">Intelligence</span>
-        </h1>
-        <p class="text-textSecondary mt-3 font-bold text-lg">Comprehensive audit of asset movements and manufacturing protocols.</p>
-    </div>
-    
-    <div class="flex items-center gap-4 no-print">
-        <div class="btn-group relative">
-            <button class="btn-premium btn-primary px-8 dropdown-toggle" data-bs-toggle="dropdown">
-                <i class="fas fa-file-export mr-3"></i> Export Report
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end p-2 rounded-2xl border-border-color shadow-2xl mt-2">
-                <li><a class="dropdown-item rounded-xl py-3 font-black text-xs uppercase tracking-widest text-dark hover:bg-background" href="{% url 'print_stock_report_html' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&include_adjustments={% if include_positive_adjustments %}1{% else %}0{% endif %}&view_mode={{ report_mode }}" target="_blank">
-                    <i class="fas fa-desktop mr-3 text-primary"></i> Digital View (HTML)
-                </a></li>
-                <li><a class="dropdown-item rounded-xl py-3 font-black text-xs uppercase tracking-widest text-dark hover:bg-background" href="{% url 'print_stock_report_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&include_adjustments={% if include_positive_adjustments %}1{% else %}0{% endif %}&view_mode={{ report_mode }}">
-                    <i class="fas fa-file-pdf mr-3 text-red-500"></i> Document (PDF)
-                </a></li>
-                <li><a class="dropdown-item rounded-xl py-3 font-black text-xs uppercase tracking-widest text-dark hover:bg-background" href="{% url 'print_stock_report_excel' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&include_adjustments={% if include_positive_adjustments %}1{% else %}0{% endif %}&view_mode={{ report_mode }}">
-                    <i class="fas fa-file-excel mr-3 text-green-600"></i> Spreadsheet (XLSX)
-                </a></li>
-            </ul>
-        </div>
-    </div>
-</div>
+<h1 class="page-title"><i class="fas fa-boxes"></i> Stock Report</h1>
 
-<div class="print-header hidden">
-    <div class="flex items-center justify-center gap-4 mb-6">
-        <img src="{{ STATIC_URL }}logo/logo.svg" alt="Logo" class="w-16 h-16">
-        <div class="text-left">
-            <h1 class="text-2xl font-black uppercase text-dark">Indian Kulfi</h1>
-            <p class="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Master Registry Audit</p>
-        </div>
-    </div>
-    <div class="h-[1px] bg-dark w-full mb-6"></div>
-    <h4 class="text-xl font-black text-dark mb-2">Stock Intelligence Report</h4>
-    <p class="text-xs font-bold text-textSecondary">Temporal Range: {{ start_date|date:'d M, Y' }} — {{ end_date|date:'d M, Y' }}</p>
+<div class="print-header">
+    <img src="{{ STATIC_URL }}logo/logo.svg" alt="Logo" onerror="this.onerror=null;this.src='{{ STATIC_URL }}logo/logo.png';" class="print-logo">
+    <h4>Stock Report</h4>
+    <p>Range: {{ start_date|date:'Y-m-d' }} to {{ end_date|date:'Y-m-d' }}</p>
 </div>
 
 <style>
@@ -87,28 +53,52 @@
     }
 </style>
 
-<div class="card-premium p-8 mb-12 no-print">
-    <form method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-8 items-end">
-        <div class="space-y-2">
-            <label class="text-[10px] font-black text-textSecondary uppercase tracking-widest px-1">Start Temporal Bound</label>
-            <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" class="input-premium">
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex gap-2 flex-wrap align-items-end justify-content-between">
+            <form method="GET" class="d-flex gap-2 flex-wrap align-items-end">
+                <div>
+                    <label class="form-label mb-1" for="start_date">Start Date</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label mb-1" for="end_date">End Date</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" class="form-control">
+                </div>
+                <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" value="1" id="include_adjustments" name="include_adjustments" {% if include_positive_adjustments %}checked{% endif %}>
+                    <label class="form-check-label" for="include_adjustments">
+                        Include Positive Adjustments
+                    </label>
+                </div>
+                <button type="submit" name="view_mode" value="general" class="btn {% if report_mode == 'general' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    <i class="fas fa-chart-bar"></i> View General Report
+                </button>
+                <button type="submit" name="view_mode" value="detailed" class="btn {% if report_mode == 'detailed' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+                    <i class="fas fa-list"></i> View Detailed Report
+                </button>
+                <a href="{% url 'stock_report' %}?clear=1" class="btn btn-outline-danger">
+                    <i class="fas fa-eraser"></i> Clear
+                </a>
+            </form>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{% url 'print_stock_report_html' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&include_adjustments={% if include_positive_adjustments %}1{% else %}0{% endif %}&view_mode={{ report_mode }}" target="_blank">
+                        <i class="fas fa-file-alt"></i> Print (HTML)
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'print_stock_report_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&include_adjustments={% if include_positive_adjustments %}1{% else %}0{% endif %}&view_mode={{ report_mode }}">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'print_stock_report_excel' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&include_adjustments={% if include_positive_adjustments %}1{% else %}0{% endif %}&view_mode={{ report_mode }}">
+                        <i class="fas fa-file-excel"></i> Download Excel
+                    </a></li>
+                </ul>
+            </div>
         </div>
-        <div class="space-y-2">
-            <label class="text-[10px] font-black text-textSecondary uppercase tracking-widest px-1">End Temporal Bound</label>
-            <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" class="input-premium">
-        </div>
-        <div class="flex items-center gap-3 h-14 px-4 bg-background rounded-2xl border border-border-color">
-            <input type="checkbox" value="1" id="include_adjustments" name="include_adjustments" {% if include_positive_adjustments %}checked{% endif %} class="w-5 h-5 rounded border-border-color text-primary focus:ring-primary">
-            <label class="text-[10px] font-black text-dark uppercase tracking-widest cursor-pointer" for="include_adjustments">Positive Adjustments</label>
-        </div>
-        <div class="flex gap-2">
-            <button type="submit" name="view_mode" value="general" class="flex-1 btn-premium {% if report_mode == 'general' %}btn-primary{% else %}btn-outline{% endif %} h-14">General</button>
-            <button type="submit" name="view_mode" value="detailed" class="flex-1 btn-premium {% if report_mode == 'detailed' %}btn-primary{% else %}btn-outline{% endif %} h-14">Detailed</button>
-        </div>
-        <a href="{% url 'stock_report' %}?clear=1" class="btn-premium btn-secondary h-14">
-            <i class="fas fa-eraser mr-2"></i> Clear
-        </a>
-    </form>
+    </div>
 </div>
 
 {% if is_cleared %}
@@ -117,123 +107,134 @@
 </div>
 {% endif %}
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-8 mb-12">
-    <div class="card-premium p-8 border-l-4 border-l-primary">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Total Entries</p>
-        <h3 class="text-3xl font-display font-black text-dark tracking-tighter">{{ total_entries }}</h3>
-        <p class="text-[10px] font-black text-primary uppercase mt-2 tracking-widest">Active Records</p>
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <h6>Total Entries</h6>
+            <div class="stat-value">{{ total_entries }}</div>
+            <small class="text-muted">stock rows in report</small>
+        </div>
     </div>
 
-    <div class="card-premium p-8 border-l-4 border-l-secondary">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Total Qty In</p>
-        <h3 class="text-3xl font-display font-black text-secondary tracking-tighter">{{ total_quantity }}</h3>
-        <p class="text-[10px] font-black text-secondary uppercase mt-2 tracking-widest">Units Processed</p>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <h6>Total Qty In</h6>
+            <div class="stat-value">{{ total_quantity }}</div>
+            <small class="text-muted">units entered</small>
+        </div>
     </div>
 
-    <div class="card-premium p-8 border-l-4 border-l-green-600">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Indian Kulfi Qty</p>
-        <h3 class="text-3xl font-display font-black text-green-600 tracking-tighter">{{ indian_kulfi_quantity }}</h3>
-        <p class="text-[10px] font-black text-green-600 uppercase mt-2 tracking-widest">Master Brand</p>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card" style="border-left-color: #27ae60;">
+            <h6>Indian Kulfi Qty</h6>
+            <div class="stat-value" style="color: #27ae60;">{{ indian_kulfi_quantity }}</div>
+            <small class="text-muted">units entered</small>
+        </div>
     </div>
 
-    <div class="card-premium p-8 border-l-4 border-l-accent">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Kulfi Corner Qty</p>
-        <h3 class="text-3xl font-display font-black text-accent tracking-tighter">{{ kulfi_corner_quantity }}</h3>
-        <p class="text-[10px] font-black text-accent uppercase mt-2 tracking-widest">External Node</p>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card" style="border-left-color: #3498db;">
+            <h6>Kulfi Corner Qty</h6>
+            <div class="stat-value" style="color: #3498db;">{{ kulfi_corner_quantity }}</div>
+            <small class="text-muted">units entered</small>
+        </div>
     </div>
 
-    <div class="card-premium p-8 border-l-4 border-l-primary">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Total Purchase Cost</p>
-        <h3 class="text-3xl font-display font-black text-primary tracking-tighter">₹{{ total_purchase_cost|floatformat:2 }}</h3>
-        <p class="text-[10px] font-black text-primary uppercase mt-2 tracking-widest">Asset Value</p>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card" style="border-left-color: #8e44ad;">
+            <h6>Total Purchase Cost</h6>
+            <div class="stat-value" style="color: #8e44ad;">₹{{ total_purchase_cost|floatformat:2 }}</div>
+            <small class="text-muted">overall stock purchase value</small>
+        </div>
     </div>
 </div>
 
-<div class="card-premium p-0 overflow-hidden shadow-2xl">
-    <div class="px-10 py-8 border-b border-border-color bg-white flex items-center justify-between">
-        <h3 class="font-display font-black uppercase tracking-[0.3em] text-sm text-dark">
-            {% if report_mode == 'general' %}General Stock Ledger{% else %}Detailed Asset Matrix{% endif %}
-        </h3>
-        <span class="px-4 py-1.5 rounded-full bg-background border border-border-color text-[9px] font-black text-textSecondary uppercase tracking-widest shadow-sm">Verified Audit</span>
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            {% if report_mode == 'general' %}
+                <i class="fas fa-chart-bar"></i> General Stock Report
+            {% else %}
+                <i class="fas fa-list"></i> Detailed Stock Report
+            {% endif %}
+            {% if include_positive_adjustments %} (Including Positive Adjustments){% endif %}
+        </h5>
     </div>
-
-    <div class="overflow-x-auto">
+    <div class="table-responsive">
         {% if report_mode == 'general' %}
-        <table class="table-premium">
-            <thead>
+        <table class="table table-hover">
+            <thead class="table-light">
                 <tr>
-                    <th class="pl-10">Stock In Date</th>
+                    <th>Stock In Date</th>
                     <th>Total Packs</th>
                     <th>Total Quantity</th>
                     <th>Overall Cost Price</th>
-                    <th class="pr-10 text-right">Manufacturer</th>
+                    <th>Manufacturer</th>
                 </tr>
             </thead>
             <tbody>
                 {% for row in general_rows %}
-                <tr class="hover:bg-background/50 transition-colors">
-                    <td class="pl-10 py-6 font-black text-dark">{{ row.movement_date|date:'d M, Y' }}</td>
-                    <td class="font-black text-dark">{{ row.total_packs|floatformat:2 }}</td>
-                    <td class="font-black text-dark">{{ row.total_quantity }} Units</td>
-                    <td class="font-black text-primary text-lg">₹{{ row.overall_cost_price|floatformat:2 }}</td>
-                    <td class="pr-10 text-right">
-                        <span class="status-badge {% if row.manufacturer == 'Indian Kulfi' %}bg-secondary/10 text-secondary{% else %}bg-accent/10 text-accent{% endif %}">
+                <tr>
+                    <td>{{ row.movement_date|date:'Y-m-d' }}</td>
+                    <td>{{ row.total_packs|floatformat:2 }}</td>
+                    <td>{{ row.total_quantity }}</td>
+                    <td>₹{{ row.overall_cost_price|floatformat:2 }}</td>
+                    <td>
+                        <span class="badge {% if row.manufacturer == 'Indian Kulfi' %}bg-success{% else %}bg-info text-dark{% endif %}">
                             {{ row.manufacturer }}
                         </span>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="py-20 text-center opacity-30">
-                        <i class="fas fa-receipt text-5xl mb-4 block"></i>
-                        <p class="text-xs font-black uppercase tracking-widest">No Intelligence Data Found</p>
-                    </td>
+                    <td colspan="5" class="text-center text-muted">No stock entries found for the selected date range</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <table class="table-premium">
-            <thead>
+        <table class="table table-hover">
+            <thead class="table-light">
                 <tr>
-                    <th class="pl-10">Date</th>
-                    <th>Node ID (SKU)</th>
-                    <th>Asset Name</th>
-                    <th>Type</th>
-                    <th>Quantum</th>
+                    <th>Date</th>
+                    <th>Manufacturer</th>
+                    <th>Entry Type</th>
+                    <th>SKU</th>
+                    <th>Product</th>
+                    <th>Quantity In</th>
                     <th>Unit Cost</th>
-                    <th class="text-right">Total Cost</th>
-                    <th class="pr-10 text-right">Manufacturer</th>
+                    <th>Total Cost</th>
+                    <th>Reference</th>
+                    <th>Recorded By</th>
                 </tr>
             </thead>
             <tbody>
                 {% for row in movement_rows %}
                 {% with movement=row.movement %}
-                <tr class="hover:bg-background/50 transition-colors">
-                    <td class="pl-10 py-6 font-black text-dark text-xs">{{ movement.movement_date|date:'d M, Y' }}</td>
-                    <td class="font-black text-primary text-xs">{{ movement.product.sku }}</td>
-                    <td class="font-black text-dark">{{ movement.product.name }}</td>
+                <tr>
+                    <td>{{ movement.movement_date|date:'Y-m-d' }}</td>
                     <td>
-                        <span class="text-[10px] font-black uppercase tracking-widest {% if row.entry_type == 'Stock In' %}text-secondary{% else %}text-accent{% endif %}">
-                            {{ row.entry_type }}
-                        </span>
-                    </td>
-                    <td class="font-black text-dark">{{ row.qty_in }}</td>
-                    <td class="font-black text-dark">₹{{ row.unit_cost|floatformat:2 }}</td>
-                    <td class="font-black text-primary text-lg text-right">₹{{ row.total_cost|floatformat:2 }}</td>
-                    <td class="pr-10 text-right">
-                        <span class="status-badge {% if row.resolved_manufacturer == 'Indian Kulfi' %}bg-secondary/10 text-secondary{% else %}bg-accent/10 text-accent{% endif %}">
+                        <span class="badge {% if row.resolved_manufacturer == 'Indian Kulfi' %}bg-success{% else %}bg-info text-dark{% endif %}">
                             {{ row.resolved_manufacturer }}
                         </span>
                     </td>
+                    <td>
+                        <span class="badge {% if row.entry_type == 'Stock In' %}bg-primary{% else %}bg-warning text-dark{% endif %}">
+                            {{ row.entry_type }}
+                        </span>
+                    </td>
+                    <td>{{ movement.product.sku }}</td>
+                    <td><strong>{{ movement.product.name }}</strong></td>
+                    <td>{{ row.qty_in }}</td>
+                    <td>₹{{ row.unit_cost|floatformat:2 }}</td>
+                    <td>₹{{ row.total_cost|floatformat:2 }}</td>
+                    <td>{{ movement.reference_document|default:'-' }}</td>
+                    <td>{% if movement.created_by %}{{ movement.created_by.get_full_name|default:movement.created_by.username }}{% else %}-{% endif %}</td>
                 </tr>
                 {% endwith %}
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="py-20 text-center opacity-30">
-                        <i class="fas fa-receipt text-5xl mb-4 block"></i>
-                        <p class="text-xs font-black uppercase tracking-widest">No Matrix Data Found</p>
-                    </td>
+                    <td colspan="10" class="text-center text-muted">No stock entries found for the selected date range</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -242,4 +243,3 @@
     </div>
 </div>
 {% endblock %}
-

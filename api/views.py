@@ -19,7 +19,6 @@ from .serializers import (
     OperationsExpenseSerializer,
     ProductSerializer,
     SalesSerializer,
-    SyncSerializer,
     UserProfileSerializer,
 )
 
@@ -74,9 +73,7 @@ class MobileTokenRefreshView(TokenRefreshView):
 
 
 class AuthViewSet(ResponseEnvelopeMixin, viewsets.GenericViewSet):
-    queryset = User.objects.none()
     permission_classes = (IsAuthenticated,)
-    serializer_class = UserProfileSerializer
 
     @action(detail=False, methods=['get'])
     def me(self, request):
@@ -160,7 +157,6 @@ class InventoryViewSet(ResponseEnvelopeMixin, mixins.ListModelMixin, mixins.Crea
 
 
 class SalesViewSet(ResponseEnvelopeMixin, viewsets.ModelViewSet):
-    queryset = Sales.objects.all()
     serializer_class = SalesSerializer
     permission_classes = (IsAuthenticated, IsStaffOrOwner)
 
@@ -205,7 +201,6 @@ class SalesViewSet(ResponseEnvelopeMixin, viewsets.ModelViewSet):
 
 
 class OperationsExpenseViewSet(ResponseEnvelopeMixin, viewsets.ModelViewSet):
-    queryset = OperationsExpense.objects.all()
     serializer_class = OperationsExpenseSerializer
     permission_classes = (IsAuthenticated, IsStaffOrOwner)
 
@@ -247,7 +242,6 @@ class OperationsExpenseViewSet(ResponseEnvelopeMixin, viewsets.ModelViewSet):
 
 class SyncViewSet(viewsets.GenericViewSet):
     permission_classes = (IsAuthenticated,)
-    serializer_class = SyncSerializer
 
     def _effect(self, movement_type, quantity):
         if movement_type == 'IN':
@@ -545,17 +539,6 @@ class SyncViewSet(viewsets.GenericViewSet):
                     }
                 )
                 self._create_event(request.user, device_id, client_txn_id, entity, operation, None, payload, 'conflict', 'Business rule conflict')
-                continue
-            except Exception as exc:
-                conflicts.append(
-                    {
-                        'index': index,
-                        'entity': entity,
-                        'reason': 'server_error',
-                        'errors': str(exc),
-                    }
-                )
-                self._create_event(request.user, device_id, client_txn_id, entity, operation, None, payload, 'conflict', 'Unexpected server error')
                 continue
 
         return Response(

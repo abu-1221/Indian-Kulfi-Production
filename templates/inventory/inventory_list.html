@@ -1,188 +1,516 @@
 {% extends 'inventory/base.html' %}
+<div class="d-flex gap-2 mb-3">
+    <a href="{% url 'dashboard' %}" class="btn btn-outline-primary d-flex align-items-center gap-2">
+        <i class="fas fa-home"></i> Home
+    </a>
+</div>
 
-{% block title %}Warehouse Matrix | Indian Kulfi Registry{% endblock %}
+{% block title %}Inventory - Kulfi{% endblock %}
 
 {% block content %}
-<div class="mb-12 flex flex-col xl:flex-row xl:items-center justify-between gap-8">
-    <div>
-        <h1 class="text-5xl font-display font-black text-dark tracking-tighter">
-            <span class="text-primary">Warehouse</span>
-        </h1>
-        <p class="text-textSecondary mt-3 font-bold text-lg">Central storage for all products and stock.</p>
-    </div>
-    
-    <div class="flex flex-wrap items-center gap-6">
-        <form method="GET" class="flex items-center gap-3">
-            <div class="relative">
-                <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-textSecondary"></i>
-                <input type="text" name="q" value="{{ request.GET.q }}" class="input-premium pl-14 pr-6 py-4 w-64 md:w-80" placeholder="Search product name or code...">
+<h1 class="page-title"><i class="fas fa-boxes"></i> View Inventory</h1>
+
+<div class="print-header" id="print-header">
+    <img src="{{ STATIC_URL }}logo/logo.svg" alt="Logo" onerror="this.onerror=null;this.src='{{ STATIC_URL }}logo/logo.png';" class="print-logo">
+    <h4>Inventory Report</h4>
+    <p>Date: {% now "Y-m-d H:i:s" %}</p>
+</div>
+
+<style>
+    .sparkline {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 18px;
+        min-width: 120px;
+        overflow-x: auto;
+    }
+
+    .btn-action-compact {
+        width: 30px;
+        min-width: 30px;
+        height: 30px;
+        padding: 0;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        margin-right: 2px;
+    }
+
+    .btn-action-compact .fas {
+        font-size: 0.75rem;
+    }
+
+    .print-header {
+        display: block;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 10px;
+        text-align: center;
+    }
+
+    .print-header h4 { margin: 0 0 4px; font-size: 18px; color: #572809; }
+    .print-header p { margin: 0; font-size: 12px; color: #555; }
+
+    .print-logo {
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
+        margin: 0 auto 8px;
+        display: block;
+    }
+
+    @media print {
+        body {
+            background: white;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .navbar, .sidebar, .row.mb-3, .card-footer, .btn, #print-inventory-btn {
+            display: none !important;
+        }
+        .print-header {
+            display: block !important;
+        }
+        .table thead th {
+            background: #572809 !important;
+            color: #fff !important;
+        }
+        .table {
+            font-size: 11px;
+        }
+        .table td, .table th {
+            padding: 4px;
+        }
+    }
+
+    .sparkline-block {
+        height: 12px;
+        background: #0d6efd;
+        border-radius: 8px;
+        opacity: 0.85;
+    }
+    .sparkline-block.negative {
+        background: #dc3545;
+    }
+    .sparkline-block.zero {
+        background: #adb5bd;
+    }
+
+    .draggable-header {
+        cursor: grab;
+        transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .draggable-header.dragging {
+        opacity: 0.6;
+        background: #e9ecef;
+    }
+    .draggable-header.drag-over {
+        background: #d1e7dd;
+        box-shadow: 0 0 10px rgba(13, 110, 253, 0.3);
+    }
+
+    @media (max-width: 768px) {
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+        .table tbody tr td:nth-child(6),
+        .table tbody tr td:nth-child(7),
+        .table tbody tr td:nth-child(8),
+        .table tbody tr td:nth-child(9) {
+            display: none;
+        }
+        .table thead th:nth-child(6),
+        .table thead th:nth-child(7),
+        .table thead th:nth-child(8),
+        .table thead th:nth-child(9) {
+            display: none;
+        }
+    }
+</style>
+
+<!-- Search + Filter/Sort Bar -->
+<div class="row mb-3">
+    <div class="col-12">
+        <form method="GET" class="row g-2 align-items-center">
+            <div class="col-lg-3 col-md-6">
+                <input type="text" name="search" class="form-control" placeholder="Search name, SKU, category..." value="{{ search_query }}">
             </div>
-            <button type="submit" class="btn-premium btn-primary px-8 h-full">Execute</button>
+
+            <div class="col-lg-2 col-md-6">
+                <select name="category" class="form-select" multiple size="1">
+                    <option value="Indian Kulfi" {% if 'Indian Kulfi' in category_filter %}selected{% endif %}>Indian Kulfi</option>
+                </select>
+                <small class="text-muted">Only Indian Kulfi available</small>
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <select name="status" class="form-select">
+                    <option value="" {% if not status_filter %}selected{% endif %}>All Status</option>
+                    <option value="in_stock" {% if status_filter == 'in_stock' %}selected{% endif %}>In Stock</option>
+                    <option value="low_stock" {% if status_filter == 'low_stock' %}selected{% endif %}>Low Stock</option>
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <input type="date" name="as_of_date" class="form-control" value="{{ as_of_date }}">
+                <small class="text-muted">View stock as of date</small>
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <select name="movement_type" class="form-select">
+                    <option value="" {% if not movement_filter %}selected{% endif %}>All Movements</option>
+                    <option value="IN" {% if movement_filter == 'IN' %}selected{% endif %}>Stock In</option>
+                    <option value="OUT" {% if movement_filter == 'OUT' %}selected{% endif %}>Stock Out</option>
+                    <option value="ADJUSTMENT" {% if movement_filter == 'ADJUSTMENT' %}selected{% endif %}>Stock Adjustment</option>
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <select name="sort" class="form-select">
+                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name ↑</option>
+                    <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Name ↓</option>
+                    <option value="sku" {% if sort_by == 'sku' %}selected{% endif %}>SKU ↑</option>
+                    <option value="-sku" {% if sort_by == '-sku' %}selected{% endif %}>SKU ↓</option>
+                    <option value="current_stock" {% if sort_by == 'current_stock' %}selected{% endif %}>Stock ↑</option>
+                    <option value="-current_stock" {% if sort_by == '-current_stock' %}selected{% endif %}>Stock ↓</option>
+                    <option value="reorder_level" {% if sort_by == 'reorder_level' %}selected{% endif %}>Reorder Level ↑</option>
+                    <option value="-reorder_level" {% if sort_by == '-reorder_level' %}selected{% endif %}>Reorder Level ↓</option>
+                    <option value="cost_price" {% if sort_by == 'cost_price' %}selected{% endif %}>Cost Price ↑</option>
+                    <option value="-cost_price" {% if sort_by == '-cost_price' %}selected{% endif %}>Cost Price ↓</option>
+                    <option value="selling_price" {% if sort_by == 'selling_price' %}selected{% endif %}>Selling Price ↑</option>
+                    <option value="-selling_price" {% if sort_by == '-selling_price' %}selected{% endif %}>Selling Price ↓</option>
+                </select>
+            </div>
+
+            <div class="col-lg-1 col-md-3">
+                <select name="per_page" class="form-select">
+                    <option value="10" {% if per_page|default:10 == 10 %}selected{% endif %}>10</option>
+                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+                <small class="text-muted">per page</small>
+            </div>
+
+            <div class="col-lg-2 col-md-3 d-grid">
+                <button type="submit" class="btn btn-primary btn-lg d-flex align-items-center gap-2">
+                    <i class="fas fa-filter fa-lg"></i> Apply
+                </button>
+            </div>
+
+            <div class="col-lg-2 col-md-3 d-grid">
+                <a href="{% url 'inventory_list' %}?clear=1" class="btn btn-outline-danger btn-lg d-flex align-items-center gap-2">
+                    <i class="fas fa-times fa-lg"></i> Clear
+                </a>
+            </div>
+
+            <div class="col-lg-2 col-md-3 d-grid gap-2">
+                <button type="button" id="reset-filters-btn" class="btn btn-secondary btn-lg d-flex align-items-center gap-2 mb-2">
+                    <i class="fas fa-rotate-left fa-lg"></i> Reset
+                </button>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-primary btn-lg d-flex align-items-center gap-2">
+                    <i class="fas fa-home fa-lg"></i> Home
+                </a>
+            </div>
         </form>
-
-        <a href="{% url 'add_product' %}" class="btn-premium btn-secondary px-10 h-full">
-            <i class="fas fa-plus-circle mr-3"></i> Add Product
-        </a>
     </div>
 </div>
 
-<!-- Stock Intelligence Summary -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-    <div class="card-premium p-8 border-l-4 border-l-dark">
-        <div class="flex items-center justify-between mb-4">
-            <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em]">Total Products</p>
-            <div class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-dark">
-                <i class="fas fa-barcode"></i>
-            </div>
+<!-- Inventory Table -->
+{% if show_results %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0"><i class="fas fa-list"></i> Stock Level</h5>
+            <small class="text-muted">
+                Total Stock: <strong>{{ total_stock }}</strong> units | Total Cost Price: <strong>₹{{ total_cost_price|floatformat:2 }}</strong> | Total Sales Price: <strong>₹{{ total_sales_price|floatformat:2 }}</strong>
+                | Stock As Of: <strong>{{ stock_as_of_label }}</strong>
+                | Generated At: <strong>{{ generated_at|date:'Y-m-d H:i:s' }}</strong>
+                {% if movement_filter %}| Movement: {{ movement_filter }}{% endif %}
+            </small>
         </div>
-        <h4 class="text-3xl font-display font-black text-dark">{{ inventory|length }}</h4>
-    </div>
-    
-    <div class="card-premium p-8 border-l-4 border-l-primary">
-        <div class="flex items-center justify-between mb-4">
-            <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em]">Total Value</p>
-            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                <i class="fas fa-chart-line"></i>
+        <div class="d-flex gap-2 align-items-center">
+            <a href="{% url 'quick_inventory_entry' %}" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1 me-1">
+                <i class="fas fa-bolt fa-sm"></i> Quick Entry
+            </a>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle d-flex align-items-center gap-1" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-print fa-sm"></i> Print
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item d-flex align-items-center gap-2" href="#" id="print-inventory-action">
+                        <i class="fas fa-print fa-sm"></i> Print Current Page
+                    </a></li>
+                    {% with qs=request.GET.urlencode %}
+                    <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'print_inventory_pdf' %}{% if qs %}?{{ qs }}{% endif %}">
+                        <i class="fas fa-file-pdf fa-sm"></i> Export PDF
+                    </a></li>
+                    <li><a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'print_inventory_excel' %}{% if qs %}?{{ qs }}{% endif %}">
+                        <i class="fas fa-file-excel fa-sm"></i> Export Excel
+                    </a></li>
+                    {% endwith %}
+                </ul>
             </div>
-        </div>
-        <h4 class="text-3xl font-display font-black text-dark">₹{{ total_valuation|default:"0" }}</h4>
-    </div>
-    
-    <div class="card-premium p-8 border-l-4 border-l-accent">
-        <div class="flex items-center justify-between mb-4">
-            <p class="text-[10px] font-black text-accent uppercase tracking-[0.2em]">Low Stock Alerts</p>
-            <div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-                <i class="fas fa-triangle-exclamation"></i>
-            </div>
-        </div>
-        <h4 class="text-3xl font-display font-black text-accent">{{ alert_count|default:"0" }}</h4>
-    </div>
-</div>
-
-<!-- Resource Matrix Table -->
-<div class="card-premium p-0 overflow-hidden shadow-2xl border-neutral-100">
-    <div class="px-10 py-8 border-b border-border-color flex flex-col md:flex-row justify-between items-center gap-6 bg-white">
-        <div class="flex items-center gap-6">
-            <div class="flex items-center gap-3">
-                <input type="checkbox" id="master-select" class="w-6 h-6 rounded border-border-color text-primary focus:ring-primary">
-                <h3 class="font-display font-black uppercase tracking-[0.3em] text-sm text-dark">Stock List</h3>
-            </div>
-            <div class="h-6 w-[1.5px] bg-border-color hidden md:block"></div>
-            <div id="bulk-actions" class="hidden flex items-center gap-3">
-                <button class="btn-premium btn-primary py-2 px-6 text-[10px]">Delete Selected</button>
-                <button class="btn-premium btn-secondary py-2 px-6 text-[10px]">Update Selected</button>
-            </div>
-        </div>
-        <div class="flex items-center gap-3">
-            <button onclick="window.print()" class="btn-premium btn-outline py-3 px-8 text-sm font-black text-dark hover:bg-gray-50 flex items-center gap-2">
-                <i class="fas fa-print"></i> Print Matrix
-            </button>
         </div>
     </div>
-
-    <div class="overflow-x-auto">
-        <table class="table-premium w-full text-left">
-            <thead>
-                <tr class="border-b border-border-color">
-                    <th class="pl-10 w-10"></th>
-                    <th class="py-6 text-[10px] font-black text-dark uppercase tracking-widest">Product Details</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest">Product Code</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest">Available Stock</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest text-right">Selling Price</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest text-center">Stock Status</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest text-right pr-10">Actions</th>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th class="draggable-header" draggable="true" data-column="name">Product Name</th>
+                    <th class="draggable-header" draggable="true" data-column="sku">SKU</th>
+                    <th class="draggable-header" draggable="true" data-column="category">Category</th>
+                    <th class="draggable-header" draggable="true" data-column="current_stock">
+                        {% if selected_date %}Stock as of {{ stock_as_of_label }}{% else %}Current Stock (Live){% endif %}
+                    </th>
+                    <th class="draggable-header" draggable="true" data-column="reorder_level">Reorder Level</th>
+                    <th class="draggable-header" draggable="true" data-column="cost_price">Cost Price</th>
+                    <th class="draggable-header" draggable="true" data-column="selling_price">Selling Price</th>
+                    <th class="draggable-header" draggable="true" data-column="status">Status</th>
+                    <th class="draggable-header" draggable="true" data-column="actions">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-neutral-50">
-                {% for item in inventory %}
-                <tr class="group hover:bg-background/50 transition-all duration-300">
-                    <td class="pl-10">
-                        <input type="checkbox" name="asset_ids" value="{{ item.id }}" class="asset-checkbox w-5 h-5 rounded border-border-color text-primary focus:ring-primary">
-                    </td>
-                    <td class="py-6">
-                        <div class="flex items-center gap-5">
-                            <div class="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-dark font-black overflow-hidden shadow-sm border border-border-color">
-                                {% if item.image %}
-                                <img src="{{ item.image.url }}" class="w-full h-full object-cover">
-                                {% else %}
-                                <i class="fas fa-ice-cream text-lg text-primary"></i>
-                                {% endif %}
-                            </div>
-                            <div>
-                                <p class="text-base font-black text-dark group-hover:text-primary transition-colors">{{ item.name }}</p>
-                                <p class="text-[10px] text-textSecondary font-black uppercase tracking-widest mt-1">{{ item.category|default:"Production" }}</p>
-                            </div>
-                        </div>
-                    </td>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td><strong>{{ product.name }}</strong></td>
+                    <td>{{ product.sku }}</td>
+                    <td>Indian Kulfi</td>
+                    <td>{{ product.display_stock|default:product.current_stock }}</td>
+                    <td>{{ product.reorder_level }}</td>
+                    <td>₹{{ product.cost_price }}</td>
+                    <td>₹{{ product.selling_price }}</td>
                     <td>
-                        <span class="text-[10px] font-black text-dark bg-white px-4 py-2 rounded-xl border border-border-color shadow-sm">
-                            {{ item.sku|default:"N/A" }}
-                        </span>
-                    </td>
-                    <td>
-                        <p class="text-lg font-display font-black {% if item.current_stock <= item.reorder_level %}text-primary{% else %}text-dark{% endif %}">
-                            {{ item.current_stock }} <span class="text-[9px] font-black text-textSecondary uppercase">Units</span>
-                        </p>
-                    </td>
-                    <td class="text-right">
-                        <p class="text-base font-black text-dark">₹{{ item.selling_price|floatformat:2 }}</p>
-                        <p class="text-[10px] text-textSecondary font-black uppercase tracking-widest mt-1">Cost: ₹{{ item.cost_price|floatformat:2 }}</p>
-                    </td>
-                    <td class="text-center">
-                        {% if item.current_stock <= 0 %}
-                        <span class="status-badge bg-primary/10 text-primary border-primary/20">Depleted</span>
-                        {% elif item.current_stock <= item.reorder_level %}
-                        <span class="status-badge bg-accent/10 text-accent border-accent/20">Critical</span>
+                        {% if product.display_stock|default:product.current_stock <= product.reorder_level %}
+                        <span class="badge bg-danger">Low Stock</span>
                         {% else %}
-                        <span class="status-badge bg-secondary/10 text-secondary border-secondary/20">Stable</span>
+                        <span class="badge bg-success">In Stock</span>
                         {% endif %}
                     </td>
-                    <td class="text-right pr-10">
-                        <div class="flex items-center justify-end gap-3">
-                            <a href="{% url 'edit_product' item.id %}" class="w-11 h-11 rounded-xl bg-white border border-border-color flex items-center justify-center text-textSecondary hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm" title="Edit">
-                                <i class="fas fa-edit text-xs"></i>
-                            </a>
-                            <a href="{% url 'quick_inventory_entry' %}?product={{ item.id }}" class="w-11 h-11 rounded-xl bg-white border border-border-color flex items-center justify-center text-textSecondary hover:bg-secondary hover:text-white hover:border-secondary transition-all shadow-sm" title="Add Stock">
-                                <i class="fas fa-plus text-xs"></i>
-                            </a>
-                        </div>
+                    <td>
+                        <a href="{% url 'inventory_history' product.id %}" class="btn btn-sm btn-info btn-action-compact" title="View History">
+                            <i class="fas fa-history"></i>
+                        </a>
+                        <a href="{% url 'quick_inventory_entry' %}" class="btn btn-sm btn-warning btn-action-compact" title="Quick Entry">
+                            <i class="fas fa-bolt"></i>
+                        </a>
+                        {% if user.is_staff %}
+                        <a href="{% url 'clear_stock' product.id %}" class="btn btn-sm btn-dark btn-action-compact" title="Clear Stock">
+                            <i class="fas fa-broom"></i>
+                        </a>
+                        {% endif %}
                     </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted">No products found</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-</div>
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const masterSelect = document.getElementById('master-select');
-        const checkboxes = document.querySelectorAll('.asset-checkbox');
-        const bulkActions = document.getElementById('bulk-actions');
 
-        function updateBulkActions() {
-            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-            if (bulkActions) {
-                if (checkedCount > 0) {
-                    bulkActions.classList.remove('hidden');
-                } else {
-                    bulkActions.classList.add('hidden');
+    {% if paginator.num_pages > 1 %}
+    <div class="card-footer">
+        <nav aria-label="Inventory pagination">
+            <ul class="pagination justify-content-center">
+                {% if products.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ products.previous_page_number }}&search={{ search_query }}&status={{ status_filter }}&movement_type={{ movement_filter }}&as_of_date={{ as_of_date }}{% for c in category_filter %}&category={{ c }}{% endfor %}&sort={{ sort_by }}&per_page={{ per_page }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                {% endif %}
+
+                {% for page in paginator.page_range %}
+                <li class="page-item {% if products.number == page %}active{% endif %}">
+                    <a class="page-link" href="?page={{ page }}&search={{ search_query }}&status={{ status_filter }}&movement_type={{ movement_filter }}&as_of_date={{ as_of_date }}{% for c in category_filter %}&category={{ c }}{% endfor %}&sort={{ sort_by }}&per_page={{ per_page }}">{{ page }}</a>
+                </li>
+                {% endfor %}
+
+                {% if products.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ products.next_page_number }}&search={{ search_query }}&status={{ status_filter }}&movement_type={{ movement_filter }}&as_of_date={{ as_of_date }}{% for c in category_filter %}&category={{ c }}{% endfor %}&sort={{ sort_by }}&per_page={{ per_page }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+    function saveColOrder(order) {
+        localStorage.setItem('inventory_col_order', JSON.stringify(order));
+    }
+
+    function loadColOrder() {
+        const stored = localStorage.getItem('inventory_col_order');
+        if (!stored) return null;
+        try {
+            return JSON.parse(stored);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function applyColOrder(order) {
+        const table = document.querySelector('.table');
+        if (!table || !order || !order.length) return;
+
+        const headerCells = Array.from(table.querySelectorAll('thead th'));
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+        const currentOrder = headerCells.map(h => h.dataset.column);
+        const targetOrder = order.filter(col => currentOrder.includes(col));
+
+        if (!targetOrder.length) return;
+
+        function reorderRow(cells, orderCols) {
+            const newRow = document.createElement('tr');
+            orderCols.forEach(col => {
+                const idx = currentOrder.indexOf(col);
+                if (idx !== -1 && cells[idx]) {
+                    newRow.appendChild(cells[idx].cloneNode(true));
                 }
-            }
+            });
+            return newRow;
         }
 
-        if (masterSelect) {
-            masterSelect.addEventListener('change', (e) => {
-                checkboxes.forEach(cb => cb.checked = e.target.checked);
-                updateBulkActions();
+        const newThead = document.createElement('tr');
+        const orderCols = targetOrder;
+
+        orderCols.forEach(col => {
+            const idx = currentOrder.indexOf(col);
+            if (idx > -1) {
+                newThead.appendChild(headerCells[idx].cloneNode(true));
+            }
+        });
+
+        const thead = table.querySelector('thead');
+        thead.innerHTML = '';
+        thead.appendChild(newThead);
+
+        const tbody = table.querySelector('tbody');
+        const newBodyFragment = document.createDocumentFragment();
+
+        rows.forEach(row => {
+            const cells = Array.from(row.children);
+            const newRow = reorderRow(cells, targetOrder);
+            newBodyFragment.appendChild(newRow);
+        });
+
+        tbody.innerHTML = '';
+        tbody.appendChild(newBodyFragment);
+        setupDragDrop();
+    }
+
+    function setupDragDrop() {
+        const headers = document.querySelectorAll('.draggable-header');
+        let dragSrcIndex = null;
+        headers.forEach((header, idx) => {
+            header.addEventListener('dragstart', function (e) {
+                dragSrcIndex = idx;
+                this.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            header.addEventListener('dragend', function () {
+                this.classList.remove('dragging');
+            });
+            header.addEventListener('dragenter', function (e) {
+                if (this !== headers[dragSrcIndex]) {
+                    this.classList.add('drag-over');
+                }
+            });
+            header.addEventListener('dragleave', function () {
+                this.classList.remove('drag-over');
+            });
+            header.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            });
+            header.addEventListener('drop', function (e) {
+                e.preventDefault();
+                if (dragSrcIndex === null) return;
+
+                const targetIndex = Array.from(headers).indexOf(this);
+                if (targetIndex < 0 || targetIndex === dragSrcIndex) return;
+
+                const table = document.querySelector('.table');
+                const allRows = [
+                    ...table.querySelectorAll('thead tr'),
+                    ...table.querySelectorAll('tbody tr')
+                ];
+
+                allRows.forEach(row => {
+                    const cells = Array.from(row.children);
+                    const dragCell = cells[dragSrcIndex];
+                    if (!dragCell) return;
+
+                    if (dragSrcIndex < targetIndex) {
+                        row.insertBefore(dragCell, cells[targetIndex + 1] || null);
+                    } else {
+                        row.insertBefore(dragCell, cells[targetIndex]);
+                    }
+                });
+
+                const newOrder = Array.from(document.querySelectorAll('thead .draggable-header')).map(h => h.dataset.column);
+                saveColOrder(newOrder);
+                headers.forEach(h => h.classList.remove('drag-over'));
+                setupDragDrop();
+            });
+        });
+    }
+
+    function updatePrintDateDisplay() {
+        const dateElement = document.getElementById('print-date');
+        if (dateElement) {
+            const d = new Date();
+            dateElement.textContent = d.toLocaleString();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const colOrder = loadColOrder();
+        if (colOrder) {
+            applyColOrder(colOrder);
+        }
+        setupDragDrop();
+
+        const resetBtn = document.getElementById('reset-filters-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function () {
+                localStorage.removeItem('inventory_col_order');
+                window.location.href = '{% url "inventory_list" %}?reset=1';
             });
         }
 
-        checkboxes.forEach(cb => {
-            cb.addEventListener('change', updateBulkActions);
-        });
+        const printBtn = document.getElementById('print-inventory-action');
+        if (printBtn) {
+            printBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+                updatePrintDateDisplay();
+                window.print();
+            });
+        }
     });
 </script>
+
 {% endblock %}
-{% endblock %}
+
+
 

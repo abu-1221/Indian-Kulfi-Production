@@ -38,16 +38,12 @@ SECRET_KEY = os.getenv('SECRET_KEY') or get_random_secret_key()
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = _as_bool(os.getenv('DEBUG'), default=True)
 
-ALLOWED_HOSTS = ['*']
-render_host = os.getenv('RENDER_EXTERNAL_HOSTNAME')
-if render_host:
-    ALLOWED_HOSTS.append(render_host)
-
+ALLOWED_HOSTS = _as_list(
+    os.getenv('ALLOWED_HOSTS'),
+    default='indiankulfi.up.railway.app,localhost,127.0.0.1'
+)
 
 CSRF_TRUSTED_ORIGINS = _as_list(os.getenv('CSRF_TRUSTED_ORIGINS'), default='')
-if render_host:
-    CSRF_TRUSTED_ORIGINS.append(f"https://{render_host}")
-
 
 # Railway exposes the live domain in RAILWAY_PUBLIC_DOMAIN.
 # Add it automatically so production does not fail when ALLOWED_HOSTS is missing.
@@ -139,7 +135,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Asia/Kolkata'
+TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
@@ -165,8 +161,6 @@ CSRF_COOKIE_SECURE = _as_bool(os.getenv('CSRF_COOKIE_SECURE'), default=not DEBUG
 SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000' if not DEBUG else '0'))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = _as_bool(os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS'), default=not DEBUG)
 SECURE_HSTS_PRELOAD = _as_bool(os.getenv('SECURE_HSTS_PRELOAD'), default=not DEBUG)
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

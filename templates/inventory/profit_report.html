@@ -1,161 +1,165 @@
 {% extends 'inventory/base.html' %}
 
-{% block title %}Profit Analysis | Indian Kulfi Registry{% endblock %}
+{% block title %}Profit Report - Kulfi{% endblock %}
 
 {% block content %}
-<div class="mb-12 flex flex-col xl:flex-row xl:items-center justify-between gap-8">
-    <div>
-        <h1 class="text-5xl font-display font-black text-dark tracking-tighter">
-            Profit <span class="text-primary">Report</span>
-        </h1>
-        <p class="text-textSecondary mt-3 font-bold text-lg">View total revenue, costs, and net profit.</p>
-    </div>
-    
-    <div class="flex flex-wrap items-center gap-6">
-        <form method="GET" class="flex items-center gap-3">
-            <div class="flex items-center gap-2">
-                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" class="input-premium px-6 py-4">
-                <span class="text-textSecondary font-black uppercase text-[10px] tracking-widest">To</span>
-                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" class="input-premium px-6 py-4">
-            </div>
-            <button type="submit" class="btn-premium btn-primary px-8 h-full">Filter Data</button>
-            <a href="{% url 'profit_report' %}" class="w-14 h-14 rounded-2xl bg-white border border-border-color flex items-center justify-center text-textSecondary hover:text-primary transition-all shadow-sm" title="Reset Filters">
-                <i class="fas fa-undo text-sm"></i>
-            </a>
-        </form>
+<h1 class="page-title"><i class="fas fa-chart-pie"></i> Profit Report</h1>
 
-        <div class="h-10 w-[1.5px] bg-border-color hidden xl:block"></div>
+<div class="print-header">
+    <img src="{{ STATIC_URL }}logo/logo.svg" alt="Logo" onerror="this.onerror=null;this.src='{{ STATIC_URL }}logo/logo.png';" class="print-logo">
+    <h4>Profit Report</h4>
+    <p>Period: {{ start_date|date:'Y-m-d' }} to {{ end_date|date:'Y-m-d' }}</p>
+</div>
 
-        <div class="flex items-center gap-3">
-            <div class="relative group">
-                <button class="btn-premium btn-secondary px-8 h-full">
-                    <i class="fas fa-print mr-3"></i> Export
+<style>
+    .print-header {
+        display: block;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 10px;
+        text-align: center;
+    }
+
+    .print-header h4 { margin: 0 0 4px; font-size: 18px; color: #572809; }
+    .print-header p { margin: 0; font-size: 12px; color: #555; }
+
+    .print-logo {
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
+        margin: 0 auto 8px;
+        display: block;
+    }
+
+    @media print {
+        body {
+            background: white;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .navbar, .sidebar, .btn-group, form, .btn {
+            display: none !important;
+        }
+
+        .print-header {
+            display: block !important;
+        }
+    }
+</style>
+
+<!-- Date Range Selector -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex gap-2 flex-wrap align-items-end justify-content-between">
+            <form method="GET" class="d-flex gap-2 flex-wrap">
+                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" class="form-control" style="max-width: 150px;">
+                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" class="form-control" style="max-width: 150px;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> View Report
                 </button>
-                <div class="absolute right-0 top-full mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-border-color p-3 hidden group-hover:block z-50">
-                    <a href="{% url 'print_profit_report_html' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" target="_blank" class="flex items-center gap-4 px-5 py-4 hover:bg-background rounded-xl">
-                        <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                            <i class="fas fa-file-alt"></i>
-                        </div>
-                        <span class="text-xs font-black text-dark uppercase tracking-widest">HTML Print</span>
-                    </a>
-                    <a href="{% url 'print_profit_report_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" class="flex items-center gap-4 px-5 py-4 hover:bg-background rounded-xl">
-                        <div class="w-10 h-10 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center">
-                            <i class="fas fa-file-pdf"></i>
-                        </div>
-                        <span class="text-xs font-black text-dark uppercase tracking-widest">PDF Export</span>
-                    </a>
-                    <a href="{% url 'print_profit_report_excel' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" class="flex items-center gap-4 px-5 py-4 hover:bg-background rounded-xl">
-                        <div class="w-10 h-10 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
-                            <i class="fas fa-file-excel"></i>
-                        </div>
-                        <span class="text-xs font-black text-dark uppercase tracking-widest">Excel Sheet</span>
-                    </a>
-                </div>
+                <a href="{% url 'profit_report' %}" class="btn btn-outline-danger" title="Clear date filters">
+                    <i class="fas fa-eraser"></i> Clear
+                </a>
+            </form>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{% url 'print_profit_report_html' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" target="_blank">
+                        <i class="fas fa-file-alt"></i> Print (HTML)
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'print_profit_report_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'print_profit_report_excel' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}">
+                        <i class="fas fa-file-excel"></i> Download Excel
+                    </a></li>
+                </ul>
             </div>
         </div>
     </div>
 </div>
 
-<!-- High-Visibility KPI Suite -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-    <div class="card-premium p-8 border-l-4 border-l-primary bg-white">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Total Revenue</p>
-        <h4 class="text-3xl font-display font-black text-primary tracking-tighter">₹{{ total_revenue|default:"0" }}</h4>
-        <div class="mt-4 h-1 w-full bg-primary/10 rounded-full overflow-hidden">
-            <div class="h-full bg-primary w-full"></div>
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <h6>Total Revenue</h6>
+            <div class="stat-value">₹{{ total_revenue }}</div>
         </div>
     </div>
-
-    <div class="card-premium p-8 border-l-4 border-l-secondary bg-white">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Total Cost</p>
-        <h4 class="text-3xl font-display font-black text-secondary tracking-tighter">₹{{ total_cost|floatformat:2 }}</h4>
-        <p class="text-[10px] font-black text-secondary uppercase mt-2 tracking-widest">Total Base Cost</p>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <h6>Total Cost</h6>
+            <div class="stat-value">₹{{ total_cost|floatformat:2 }}</div>
+        </div>
     </div>
-
-    <div class="card-premium p-8 border-l-4 border-l-accent bg-white">
-        <p class="text-[10px] font-black text-textSecondary uppercase tracking-[0.2em] mb-1">Total Profit</p>
-        <h4 class="text-3xl font-display font-black text-accent tracking-tighter">₹{{ total_profit|floatformat:2 }}</h4>
-        <p class="text-[10px] font-black text-accent uppercase mt-2 tracking-widest">Net Profit</p>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card" style="border-left-color: #27ae60;">
+            <h6>Total Profit</h6>
+            <div class="stat-value" style="color: #27ae60;">₹{{ total_profit|floatformat:2 }}</div>
+        </div>
     </div>
-
-    <div class="card-premium p-8 bg-dark border-none shadow-2xl">
-        <p class="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1">Profit Margin %</p>
-        <h4 class="text-3xl font-display font-black text-secondary tracking-tighter">{% widthratio total_profit total_revenue 100 %}%</h4>
-        <div class="mt-4 flex items-center gap-2">
-            <span class="px-3 py-1 rounded-full bg-white/10 text-[9px] font-black text-secondary uppercase tracking-widest">Healthy Margin</span>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <h6>Profit Margin</h6>
+            <div class="stat-value">{% widthratio total_profit total_revenue 100 %}%</div>
         </div>
     </div>
 </div>
 
-<!-- Profitability Breakdown Matrix -->
-<div class="card-premium p-0 overflow-hidden shadow-2xl border-border-color">
-    <div class="px-10 py-8 border-b border-border-color bg-white flex items-center justify-between">
-        <h3 class="font-display font-black uppercase tracking-[0.3em] text-sm text-dark">Product Profit List</h3>
-        <span class="px-4 py-1.5 rounded-full bg-background border border-border-color text-[9px] font-black text-textSecondary uppercase tracking-widest">Detailed View</span>
+<!-- Product Profit Breakdown -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-list"></i> Product-wise Profit Analysis</h5>
     </div>
-    
-    <div class="overflow-x-auto">
-        <table class="table-premium w-full text-left">
-            <thead>
-                <tr class="border-b border-border-color">
-                    <th class="pl-10 py-6 text-[10px] font-black text-dark uppercase tracking-widest">Product Name</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest">Volume Sold</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest">Total Revenue</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest">Total Cost</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest text-center">Net Profit</th>
-                    <th class="text-[10px] font-black text-dark uppercase tracking-widest text-right pr-10">Margin %</th>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Product</th>
+                    <th>Quantity Sold</th>
+                    <th>Revenue</th>
+                    <th>Cost</th>
+                    <th>Profit</th>
+                    <th>Margin</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-border-color/50">
+            <tbody>
                 {% for product_name, data in products_profit %}
-                <tr class="group hover:bg-background/50 transition-colors">
-                    <td class="pl-10 py-6">
-                        <p class="text-sm font-black text-dark">{{ product_name }}</p>
-                    </td>
-                    <td>
-                        <span class="text-sm font-black text-textSecondary">{{ data.quantity }} <span class="text-[10px] uppercase">Units</span></span>
-                    </td>
-                    <td>
-                        <span class="text-sm font-black text-dark">₹{{ data.revenue|floatformat:2 }}</span>
-                    </td>
-                    <td>
-                        <span class="text-sm font-black text-textSecondary">₹{{ data.cost|floatformat:2 }}</span>
-                    </td>
-                    <td class="text-center">
-                        <span class="status-badge bg-secondary/10 text-secondary border-secondary/20 font-black">
-                            ₹{{ data.profit|floatformat:2 }}
-                        </span>
-                    </td>
-                    <td class="text-right pr-10">
-                        <span class="text-sm font-black text-dark">{{ data.margin|floatformat:2 }}%</span>
-                    </td>
+                <tr>
+                    <td><strong>{{ product_name }}</strong></td>
+                    <td>{{ data.quantity }}</td>
+                    <td>₹{{ data.revenue|floatformat:2 }}</td>
+                    <td>₹{{ data.cost|floatformat:2 }}</td>
+                    <td><span class="badge bg-success">₹{{ data.profit|floatformat:2 }}</span></td>
+                    <td>{{ data.margin|floatformat:2 }}%</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="px-10 py-32 text-center">
-                        <div class="">
-                            <i class="fas fa-chart-bar text-6xl mb-6 block"></i>
-                        </div>
-                        <p class="text-xs font-black uppercase tracking-[0.4em] text-dark">No data found for this period.</p>
-                    </td>
+                    <td colspan="6" class="text-center text-muted">No profit data available</td>
                 </tr>
                 {% endfor %}
             </tbody>
             {% if products_profit %}
-            <tfoot class="bg-background">
-                <tr class="border-t-2 border-border-color">
-                    <td class="pl-10 py-8 text-xs font-black text-dark uppercase tracking-widest">Total</td>
-                    <td class="text-sm font-black text-dark">{{ total_quantity }}</td>
-                    <td class="text-lg font-display font-black text-primary">₹{{ total_revenue|floatformat:2 }}</td>
-                    <td class="text-lg font-display font-black text-textSecondary">₹{{ total_cost|floatformat:2 }}</td>
-                    <td class="text-center">
-                        <span class="status-badge bg-secondary text-white border-none px-6 py-2 shadow-lg shadow-secondary/20">
-                            ₹{{ total_profit|floatformat:2 }}
-                        </span>
-                    </td>
-                    <td class="text-right pr-10">
-                        <span class="text-lg font-display font-black text-dark">--</span>
-                    </td>
+            <tfoot>
+                <tr class="table-dark fw-bold">
+                    <td>TOTAL</td>
+                    <td>{{ total_quantity }}</td>
+                    <td>₹{{ total_revenue|floatformat:2 }}</td>
+                    <td>₹{{ total_cost|floatformat:2 }}</td>
+                    <td>₹{{ total_profit|floatformat:2 }}</td>
+                    <td>—</td>
                 </tr>
             </tfoot>
             {% endif %}
@@ -163,4 +167,6 @@
     </div>
 </div>
 {% endblock %}
+
+
 

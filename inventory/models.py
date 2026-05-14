@@ -83,7 +83,7 @@ class Inventory(models.Model):
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Cost price per unit at the time of this movement")
     reference_document = models.CharField(max_length=100, blank=True, help_text="PO/DO/Invoice number")
     notes = models.TextField(blank=True)
-    movement_date = models.DateField(default=timezone.now, db_index=True, help_text="The actual date of inventory movement")
+    movement_date = models.DateField(default=timezone.now, help_text="The actual date of inventory movement")
     client_txn_id = models.CharField(max_length=64, blank=True, null=True, db_index=True, help_text="Client-generated idempotency key")
     client_updated_at = models.DateTimeField(blank=True, null=True, db_index=True, help_text="Client-side update timestamp")
     server_version = models.PositiveIntegerField(default=1)
@@ -114,7 +114,7 @@ class Sales(models.Model):
     total_price = models.DecimalField(max_digits=12, decimal_places=2)
     
     # Timestamp
-    sale_date = models.DateField(db_index=True)
+    sale_date = models.DateField()
     sale_time = models.TimeField(auto_now_add=True)
     
     # User info

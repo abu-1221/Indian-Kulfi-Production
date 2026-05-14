@@ -1,206 +1,150 @@
 {% extends 'inventory/base.html' %}
 
-{% block title %}Operational Entry | Indian Kulfi Registry{% endblock %}
+{% block title %}Quick Operations Entry - Kulfi{% endblock %}
 
 {% block content %}
-<div class="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6" id="header-reveal">
-    <div>
-        <h1 class="text-5xl font-display font-black text-dark tracking-tighter">
-            Operational <span class="text-primary">Registry</span>
-        </h1>
-        <p class="text-textSecondary mt-3 font-bold text-lg">Management of daily expenditure vectors and maintenance resource logs.</p>
-    </div>
-    <div class="px-8 py-4 rounded-2xl bg-white border border-border-color flex items-center gap-5 shadow-sm">
-        <div class="flex flex-col text-right">
-            <p class="text-[9px] font-black text-textSecondary uppercase tracking-widest">Temporal Node</p>
-            <p class="text-sm font-black text-dark uppercase tracking-tighter">{{ selected_date|date:'d M, Y' }}</p>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-            <i class="fas fa-calendar-check text-lg"></i>
-        </div>
-    </div>
-</div>
+<h1 class="page-title"><i class="fas fa-bolt"></i> Quick Operations Entry</h1>
 
-<div class="grid grid-cols-1 xl:grid-cols-12 gap-10" id="main-reveal">
-    <!-- Left: Entry Control -->
-    <div class="xl:col-span-4">
-        <div class="card-premium sticky top-32 border-accent/10 shadow-accent/5">
-            <div class="flex items-center justify-between mb-10">
-                <h3 class="text-xs font-black text-dark uppercase tracking-[0.4em] flex items-center gap-3">
+<div class="row mb-4">
+    <div class="col-lg-5 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
                     {% if edit_expense %}
-                        <span class="w-3 h-3 rounded-full bg-secondary animate-pulse shadow-lg shadow-secondary/50"></span> Modify Entry
+                        <i class="fas fa-edit"></i> Edit Operation Expense
                     {% else %}
-                        <span class="w-3 h-3 rounded-full bg-accent animate-pulse shadow-lg shadow-accent/50"></span> New Opex Outflow
+                        <i class="fas fa-plus-circle"></i> Add Operation Expense
                     {% endif %}
-                </h3>
+                </h5>
             </div>
-
-            <form method="POST" class="space-y-8">
-                {% csrf_token %}
-                {% if edit_expense %}
-                <input type="hidden" name="expense_id" value="{{ edit_expense.id }}">
-                {% endif %}
-                
-                <div class="space-y-6">
-                    <!-- Date -->
-                    <div class="space-y-2 group">
-                        <label class="text-[10px] font-black text-textSecondary uppercase tracking-widest px-1 group-focus-within:text-primary transition-colors">Operation Timestamp</label>
-                        <div class="relative">
-                            <i class="fas fa-calendar absolute left-5 top-1/2 -translate-y-1/2 text-textSecondary group-focus-within:text-primary z-10"></i>
-                            <input type="date" name="operation_date" id="id_operation_date" value="{{ form.operation_date.value|default:selected_date|date:'Y-m-d' }}" class="input-premium pl-14 py-4 font-black" required>
-                        </div>
-                    </div>
-
-                    <!-- Details -->
-                    <div class="space-y-2 group">
-                        <label class="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1 group-focus-within:text-primary transition-colors">Transaction Metadata</label>
-                        <textarea name="details" id="id_details" rows="3" placeholder="e.g. Raw Material, Logistics, Maintenance..." class="input-premium py-4 resize-none font-bold" required>{{ form.details.value|default:'' }}</textarea>
-                    </div>
-
-                    <!-- Amount -->
-                    <div class="space-y-2 group">
-                        <label class="text-[10px] font-black text-textSecondary uppercase tracking-widest px-1 group-focus-within:text-primary transition-colors">Quantum Value (₹)</label>
-                        <div class="relative">
-                            <span class="absolute left-6 top-1/2 -translate-y-1/2 text-accent font-black text-lg">₹</span>
-                            <input type="number" step="0.01" name="amount" id="id_amount" value="{{ form.amount.value|default:'' }}" placeholder="0.00" class="input-premium pl-12 py-4 font-display font-black text-2xl" required>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="pt-6">
+            <div class="card-body">
+                <form method="POST" class="row g-3">
+                    {% csrf_token %}
                     {% if edit_expense %}
-                    <div class="flex gap-4">
-                        <button type="submit" class="flex-1 btn-primary py-5 bg-secondary text-neutral-900 hover:bg-secondary-light">
-                            Update Entry
-                        </button>
-                        <a href="{% url 'quick_operations_entry' %}?date={{ selected_date|date:'Y-m-d' }}" class="w-14 h-14 rounded-2xl border border-neutral-200 bg-white flex items-center justify-center text-neutral-400 hover:text-red-500 transition-all">
-                            <i class="fas fa-times"></i>
-                        </a>
-                    </div>
-                    {% else %}
-                    <button type="submit" class="w-full btn-primary py-5 text-base group bg-accent hover:bg-red-700 shadow-accent/20">
-                        <i class="fas fa-save mr-3 group-hover:rotate-12 "></i>
-                        Record Expenditure
-                    </button>
+                    <input type="hidden" name="expense_id" value="{{ edit_expense.id }}">
                     {% endif %}
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Right: Temporal Insights & Registry -->
-    <div class="xl:col-span-8 space-y-10">
-        <!-- Dashboard Matrix -->
-        <div class="card-premium" id="stats-reveal">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2 p-1.5 rounded-2xl bg-background border border-border-color shadow-inner">
-                        <a href="{% url 'quick_operations_entry' %}?date={{ previous_date|date:'Y-m-d' }}" class="w-11 h-11 rounded-xl flex items-center justify-center text-textSecondary hover:bg-white hover:text-primary transition-all shadow-sm">
-                            <i class="fas fa-chevron-left text-xs"></i>
-                        </a>
-                        <div class="px-6 text-[11px] font-black text-dark uppercase tracking-widest">
-                            {{ selected_date|date:'d M, Y' }}
-                        </div>
-                        <a href="{% url 'quick_operations_entry' %}?date={{ next_date|date:'Y-m-d' }}" class="w-11 h-11 rounded-xl flex items-center justify-center text-textSecondary hover:bg-white hover:text-primary transition-all shadow-sm">
-                            <i class="fas fa-chevron-right text-xs"></i>
-                        </a>
+                    <div class="col-12">
+                        <label class="form-label" for="id_operation_date">Date</label>
+                        {{ form.operation_date }}
+                        {% if form.operation_date.errors %}<div class="text-danger small mt-1">{{ form.operation_date.errors|join:', ' }}</div>{% endif %}
                     </div>
-                    <a href="{% url 'quick_income_entry' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn-premium btn-secondary px-8 h-full text-[10px]">
-                        <i class="fas fa-plus mr-3"></i> Revenue Add
-                    </a>
-                </div>
-                
-                <form method="GET" class="flex gap-3 w-full md:w-auto">
-                    <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" class="bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-neutral-900 outline-none focus:border-primary w-full md:w-44">
-                    <button type="submit" class="btn-outline px-6 py-2.5 text-xs">Go</button>
+                    <div class="col-12">
+                        <label class="form-label" for="id_details">Details of Operation</label>
+                        {{ form.details }}
+                        {% if form.details.errors %}<div class="text-danger small mt-1">{{ form.details.errors|join:', ' }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="id_amount">Amount</label>
+                        {{ form.amount }}
+                        {% if form.amount.errors %}<div class="text-danger small mt-1">{{ form.amount.errors|join:', ' }}</div>{% endif %}
+                    </div>
+                    <div class="col-12 d-grid">
+                        {% if edit_expense %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary flex-fill">
+                                <i class="fas fa-save"></i> Update Operation Cost
+                            </button>
+                            <a href="{% url 'quick_operations_entry' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                        {% else %}
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Operation Cost
+                        </button>
+                        {% endif %}
+                    </div>
                 </form>
             </div>
+        </div>
+    </div>
 
-            <!-- Daily Metrics Grid -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-                <div class="p-6 rounded-3xl bg-white border border-border-color shadow-sm group hover:border-primary/20 transition-all">
-                    <p class="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-2">Total Inflow</p>
-                    <p class="text-2xl font-display font-black text-dark tracking-tighter">₹{{ day_revenue|floatformat:2 }}</p>
+    <div class="col-lg-7 mb-3">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <h5 class="mb-0"><i class="fas fa-calendar-day"></i> Daily Operations Summary</h5>
+                    <a href="{% url 'quick_income_entry' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn btn-outline-success btn-sm" title="Open Quick Income Entry">
+                        <i class="fas fa-coins"></i> Income
+                    </a>
+                    <a href="{% url 'quick_operations_entry' %}?date={{ previous_date|date:'Y-m-d' }}" class="btn btn-outline-secondary btn-sm" title="Previous day">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    <span class="badge bg-light text-dark border px-3 py-2">{{ selected_date|date:'Y-m-d' }}</span>
+                    <a href="{% url 'quick_operations_entry' %}?date={{ next_date|date:'Y-m-d' }}" class="btn btn-outline-secondary btn-sm" title="Next day">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
                 </div>
-                <div class="p-6 rounded-3xl bg-white border border-border-color shadow-sm group hover:border-secondary/20 transition-all">
-                    <p class="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-2">Misc Buffer</p>
-                    <p class="text-2xl font-display font-black text-secondary tracking-tighter">₹{{ day_operation_income|floatformat:2 }}</p>
-                </div>
-                <div class="p-6 rounded-3xl bg-white border border-border-color shadow-sm group hover:border-accent/20 transition-all">
-                    <p class="text-[9px] font-black text-textSecondary uppercase tracking-widest mb-2">Registry Out</p>
-                    <p class="text-2xl font-display font-black text-accent tracking-tighter">₹{{ total_day_operation_cost|floatformat:2 }}</p>
-                </div>
-                <div class="p-6 rounded-3xl bg-dark border-none shadow-2xl">
-                    <p class="text-[9px] font-black text-white/50 uppercase tracking-widest mb-2">Net Balance</p>
-                    <p class="text-2xl font-display font-black text-secondary tracking-tighter">₹{{ day_net_after_operations|floatformat:2 }}</p>
-                </div>
+                <form method="GET" class="d-flex gap-2 align-items-center mb-0">
+                    <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" class="form-control form-control-sm" style="min-width: 160px;">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">View</button>
+                </form>
             </div>
+            <div class="card-body">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-3">
+                        <div class="alert alert-info py-2 mb-0">
+                            <strong>Sales:</strong><br>₹{{ day_revenue|floatformat:2 }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-primary py-2 mb-0">
+                            <strong>Other Income:</strong><br>₹{{ day_operation_income|floatformat:2 }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-warning py-2 mb-0">
+                            <strong>Operation Cost:</strong><br>₹{{ total_day_operation_cost|floatformat:2 }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-success py-2 mb-0">
+                            <strong>Net After Ops:</strong><br>₹{{ day_net_after_operations|floatformat:2 }}
+                        </div>
+                    </div>
+                </div>
 
-            <!-- Detailed Table -->
-            <div class="overflow-x-auto">
-                <table class="table-premium">
-                    <thead>
-                        <tr class="border-b border-border-color">
-                            <th class="pl-10 py-6 text-[10px] font-black text-dark uppercase tracking-widest">Authorized Handler</th>
-                            <th class="text-[10px] font-black text-dark uppercase tracking-widest">Transaction Descriptor</th>
-                            <th class="text-[10px] font-black text-dark uppercase tracking-widest text-right">Quantum Mapping</th>
-                            <th class="text-[10px] font-black text-dark uppercase tracking-widest text-right pr-10">Ops</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-neutral-50">
-                        {% for item in operations_entries %}
-                        <tr class="group">
-                            <td class="pl-10 py-6">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-primary font-black text-[10px] group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
-                                        {{ item.created_by.username|slice:":2"|upper }}
-                                    </div>
-                                    <span class="text-xs font-bold text-neutral-500 group-hover:text-neutral-900 transition-colors">{% if item.created_by %}{{ item.created_by.get_full_name|default:item.created_by.username }}{% else %}-{% endif %}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <p class="text-sm font-black text-neutral-900">{{ item.details }}</p>
-                                <p class="text-[9px] text-neutral-400 font-bold uppercase mt-1 tracking-widest">Entry Ref: OPX-{{ item.id }}</p>
-                            </td>
-                            <td class="text-right">
-                                <span class="text-base font-display font-black text-accent">-₹{{ item.amount|floatformat:2 }}</span>
-                            </td>
-                            <td class="text-right pr-10">
-                                <div class="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 ">
-                                    <a href="{% url 'quick_operations_entry' %}?date={{ selected_date|date:'Y-m-d' }}&edit={{ item.id }}" class="w-10 h-10 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-neutral-400 hover:text-primary transition-all shadow-sm">
-                                        <i class="fas fa-edit text-xs"></i>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%;">Date</th>
+                                <th>Details of Operation</th>
+                                <th style="width: 20%;">Amount</th>
+                                <th style="width: 25%;">Recorded By</th>
+                                <th style="width: 12%;" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in operations_entries %}
+                            <tr>
+                                <td>{{ item.operation_date|date:'Y-m-d' }}</td>
+                                <td>{{ item.details }}</td>
+                                <td>₹{{ item.amount|floatformat:2 }}</td>
+                                <td>{% if item.created_by %}{{ item.created_by.get_full_name|default:item.created_by.username }}{% else %}-{% endif %}</td>
+                                <td class="text-center">
+                                    <a href="{% url 'quick_operations_entry' %}?date={{ selected_date|date:'Y-m-d' }}&edit={{ item.id }}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                        <i class="fas fa-edit"></i>
                                     </a>
-                                    <form method="POST" action="{% url 'delete_operations_expense' item.id %}" class="inline" onsubmit="return confirm('Initiate permanent purge of this operation record?');">
+                                    <form method="POST" action="{% url 'delete_operations_expense' item.id %}" class="d-inline" onsubmit="return confirm('Delete this operation entry?');">
                                         {% csrf_token %}
                                         <input type="hidden" name="selected_date" value="{{ selected_date|date:'Y-m-d' }}">
-                                        <button type="submit" class="w-10 h-10 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-neutral-400 hover:text-red-500 transition-all shadow-sm">
-                                            <i class="fas fa-trash-alt text-xs"></i>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                            <i class="fas fa-trash"></i>
                                         </button>
                                     </form>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="px-10 py-32 text-center opacity-30">
-                                <i class="fas fa-receipt text-4xl mb-4"></i>
-                                <p class="text-[10px] font-black uppercase tracking-widest">No expenditures recorded for current node</p>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No operation expenses recorded for this date.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        
-        
-        
-    });
-</script>
 {% endblock %}
-
